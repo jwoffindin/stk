@@ -2,3 +2,4 @@
 vars:
   foo: bar
 params:
+  jane: smith

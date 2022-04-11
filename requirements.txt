@@ -1,2 +1,4 @@
 click
 pytest
+pyyaml
+pytest-xdist
