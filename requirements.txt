@@ -2,3 +2,4 @@ click
 pytest
 pyyaml
 pytest-xdist
+jinja2
