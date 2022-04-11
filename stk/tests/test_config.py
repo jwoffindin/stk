@@ -23,8 +23,8 @@ class TestEmptyConfig(ConfigFixtures):
 class TestSimpleConfig(ConfigFixtures):
     def test_simple_load_vars(self, config):
         assert list(config.vars().keys()) == ['foo' ,'bar']
-        assert config.var('bar') == 'hello, world'
+        assert config.var('bar') == 'hello, world!'
 
     def test_simple_load_params(self, config):
         assert list(config.params().keys()) == ['jane']
-        assert config.param('jane') == 'Jane said "hello there"'
+        assert config.param('jane') == 'Jane said "hello, world!"'

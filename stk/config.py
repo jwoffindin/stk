@@ -89,7 +89,23 @@ class Config:
 
             return errors
 
+    class InterpolatedDict(dict):
+        def __init__(self, object, vars):
+            # Handle loading from empty YAML file (results in None), or a 'config group' (e.g. params)
+            # not being present - which is okay.
+            if not object:
+                return
 
+            env = Environment(undefined=StrictUndefined)
+
+            for k, v in object.items():
+                try:
+                    value = env.from_string(str(v)).render(vars)
+                    parsed_value = safe_load(value)
+                    if parsed_value != None:
+                        self[k] = parsed_value
+                except Exception as ex:
+                    raise(Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
 
 
     def __init__(self, name: str, environment: str, config_path: str, var_overrides: dict = {}, param_overrides: dict = {}):
@@ -99,6 +115,7 @@ class Config:
 
         self._cfg = ConfigFile(path.join(config_path, name + '.yml'))
         self._vars = Config.Vars(self._cfg['vars'])
+        self._params = Config.InterpolatedDict(self._cfg['params'], self._vars)
 
 
     def vars(self):
@@ -108,10 +125,9 @@ class Config:
         return self._vars.get(name)
 
     def params(self):
-        return self._cfg['params']
+        return self._params
 
     def param(self, name):
-        pp = self.params()
-        if name not in pp:
+        if name not in self._params:
             return None
-        return pp[name]
+        return self._params[name]

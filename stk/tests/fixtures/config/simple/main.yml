@@ -1,6 +1,6 @@
 ---
 vars:
   foo: world
-  bar: "hello, {{ foo }}"
+  bar: "hello, {{ foo }}!"
 params:
   jane: Jane said "{{ bar }}"
