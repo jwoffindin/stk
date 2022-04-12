@@ -1,3 +1,6 @@
 ---
 vars:
-  d: this comes from third.yml
+  d: this is from third.yaml
+
+params:
+  p2: this is param from third.yaml

@@ -1,0 +1,9 @@
+---
+vars:
+  c: should not be returned
+  d: this is included default
+
+environments:
+  test:
+    vars:
+      c: this is included environment

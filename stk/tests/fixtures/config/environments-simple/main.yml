@@ -1,0 +1,12 @@
+---
+include:
+  - common
+
+vars:
+  a: should not be returned
+  b: this is top-level default
+
+environments:
+  test:
+    vars:
+      a: this is top-level environment

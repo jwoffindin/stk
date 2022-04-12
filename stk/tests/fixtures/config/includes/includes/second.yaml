@@ -4,3 +4,6 @@ vars:
   b: should not appear - overwritten by first.yaml
   c: this is from second.yaml
   d: should not appear - overwritten by third
+
+params:
+  p3: 'interpolated "{{ a }}"'

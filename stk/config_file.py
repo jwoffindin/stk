@@ -3,6 +3,21 @@ from os import path
 from pathlib import Path
 from yaml import safe_load
 
+class ConfigFiles(list):
+    def fetch_dict(self, key, environment):
+        ret_val = {}
+
+        for config_file in self:
+            # Top-level key in file is lowest priority
+            if key in config_file:
+                ret_val.update(config_file[key])
+
+            # Environment-specific key is higher priority
+            ret_val.update(config_file.environment(environment).get(key, {}))
+
+        return ret_val
+
+
 class ConfigFile(dict):
     EXPECTED_KEYS = ['vars', 'params', 'environments', 'include']
 
@@ -38,6 +53,12 @@ class ConfigFile(dict):
         """
         return list(self['environments'].keys())
 
+    def environment(self, environment) -> dict:
+        """
+        Returns environment section from a config file. Returns empty dict if not defined, or None.
+        """
+        return self['environments'].get(environment, None) or {}
+
     def includes(self):
         """
         Returns list of included files (relative to config dir). Files will be given .yml extension
@@ -58,11 +79,10 @@ class ConfigFile(dict):
 
     def load_includes(self) -> list:
         """
-        Returns list of config files with highest precedence first
+        Returns list of config files with highest precedence last (lowest first)
         """
         includes = self._load_includes(set())
-        includes.reverse()
-        return list(include for include in includes if include)
+        return ConfigFiles(include for include in includes if include)
 
     def _load_includes(self, seen) -> list:
         """

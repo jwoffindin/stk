@@ -19,13 +19,32 @@ class TestSimpleConfig(ConfigFixtures):
     def test_simple_load_params(self, config):
         assert list(config.params().keys()) == ['jane']
         assert config.param('jane') == 'Jane said "hello, world!"'
-# @pytest.mark.parametrize('config', ['includes'], indirect=True)
-# class TestIncludedConfig(ConfigFixtures):
-#     def test_include_vars(self, config):
-#         v = config.vars()
-#         assert list(v.keys()) == ['a', 'b', 'c', 'd']
 
-#         assert v['a'] == 'this is top-level'
-#         assert v['b'] == 'this is first include that should override second include'
-#         assert v['c'] == 'this is from second.yaml'
-#         assert v['d'] == 'this is from third.yaml'
+@pytest.mark.parametrize('config', ['includes'], indirect=True)
+class TestIncludedConfig(ConfigFixtures):
+    def test_include_vars(self, config):
+        v = config.vars()
+        assert sorted(v.keys()) == ['a', 'b', 'c', 'd']
+
+        assert v['a'] == 'this is top-level'
+        assert v['b'] == 'this is from first.yaml'
+        assert v['c'] == 'this is from second.yaml'
+        assert v['d'] == 'this is from third.yaml'
+
+    def test_include_params(self, config):
+        v = config.params()
+        assert sorted(v.keys()) == ['p1', 'p2', 'p3']
+
+        assert v['p1'] == 'this is top-level param'
+        assert v['p2'] == 'this is param from third.yaml'
+        assert v['p3'] == 'interpolated "this is top-level"'
+
+
+@pytest.mark.parametrize('config', ['environments-simple'], indirect=True)
+class TestEnvironmentalPrecdenceConfig(ConfigFixtures):
+    def test_var_precedence(self, config):
+        v = config.vars()
+        assert v['a'] == 'this is top-level environment'
+        assert v['b'] == 'this is top-level default'
+        assert v['c'] == 'this is included environment'
+        assert v['d'] == 'this is included default'

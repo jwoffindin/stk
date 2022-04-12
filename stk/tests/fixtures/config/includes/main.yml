@@ -3,7 +3,8 @@ include:
   - first
 vars:
   a: this is top-level
-
+params:
+  p1: this is top-level param
 environments:
   dev:
   test:

@@ -45,15 +45,11 @@ class Config:
             while interpolation_depth <= self.MAX_INTERPOLATION_DEPTH:
                 interpolation_depth += 1
                 unexpanded_keys = sorted(set(vars.keys()) - set(self.keys()))
-                print(f'unexpanded = {unexpanded_keys}')
-
                 if not unexpanded_keys:
                     return None
 
                 for key in unexpanded_keys:
-                    print("Processing " + key)
                     value = vars[key]
-                    print(value)
                     try:
                         if type(value) in [bool, dict, list, str]:
                             tpl = env.from_string(str(value)) # convert value to jinja2 template
@@ -101,11 +97,10 @@ class Config:
         if environment not in cfg.environments():
             raise ConfigException(f"Environment {environment} is not a valid environment for {cfg.filename}. Only {cfg.environments()} permitted.")
 
+        includes = cfg.load_includes()
 
-        cfg.load_includes()
-
-        self._vars = Config.Vars(cfg['vars'])
-        self._params = Config.InterpolatedDict(cfg['params'], self._vars)
+        self._vars = Config.Vars(includes.fetch_dict('vars', environment))
+        self._params = Config.InterpolatedDict(includes.fetch_dict('params', environment), self._vars)
 
 
     def vars(self):
