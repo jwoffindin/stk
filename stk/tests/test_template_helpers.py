@@ -43,6 +43,9 @@ class TestTemplateHelpers(Fixtures):
 
         rendered = template.render()
 
+        print(rendered)
+
         assert type(rendered) == RenderedTemplate
 
         assert rendered['foo_should_be_42'] == '42'
+        assert rendered['resourcify'] == 'Foo_barBaz'

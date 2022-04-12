@@ -1,13 +1,11 @@
 from __future__ import annotations
-from email.mime import base
-from pathlib import Path
 from cfn_tools import load_yaml
 from jinja2 import Environment, StrictUndefined
 
 from .provider import GenericProvider
 from .template_helper_loader import TemplateHelperLoader
 from .config import Config
-
+from .template_helpers import TemplateHelpers
 class FailedTemplate(dict):
     ERROR_CONTEXT_LINES = 3
 
@@ -63,9 +61,9 @@ class RenderedTemplate(dict):
 
 
 class Template:
-    def __init__(self, provider: GenericProvider, custom_helpers: list):
+    def __init__(self, provider: GenericProvider, helpers: TemplateHelpers = None):
         self.provider = provider
-        self.helpers  = custom_helpers
+        self.helpers  = helpers
 
     def render(self, vars: dict) -> str:
         raw_template = str(self.provider.template(), 'utf-8')
@@ -73,9 +71,8 @@ class Template:
         content = None
         env = Environment(line_statement_prefix="##", undefined=StrictUndefined)
 
-        # Add any declared custom helpers
-        for helper in self.helpers:
-            helper.inject(env, context=self)
+        if self.helpers:
+            self.helpers.inject(env)
 
         # This will fail if rendered template can't be processed via Jinja2 (e.g. undefined variable access etc)
         try:
@@ -95,9 +92,12 @@ class TemplateWithConfig(Template):
         self.vars = config.vars
 
         loader = TemplateHelperLoader(provider=provider, namespace="config")
-        helpers = loader.load_helpers(config.helpers)
 
-        super().__init__(provider, custom_helpers=helpers)
+        custom_helpers = loader.load_helpers(config.helpers)
+
+        helpers = TemplateHelpers(custom_helpers=custom_helpers)
+
+        super().__init__(provider, helpers=helpers)
 
     def render(self) -> str:
         return super().render(self.vars)

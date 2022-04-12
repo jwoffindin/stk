@@ -10,7 +10,7 @@ from .template_helper_loader import TemplateHelperLoader
 
 from . import VERSION
 from .config import Config
-from .template import Template
+from .template import TemplateWithConfig
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -30,13 +30,8 @@ def show_template(stack: str, env: str, config_path: str, template_path: str):
 
     source = config.template_source
 
-    provider = source.provider()
-
-    loader = TemplateHelperLoader(provider=provider, namespace="config")
-    helpers = loader.load_helpers(config.helpers)
-
-    template = Template(source.provider(), custom_helpers=helpers)
-    rendered = template.render(config.vars)
+    template = TemplateWithConfig(source.provider(), config)
+    rendered = template.render()
 
     print(rendered)
 

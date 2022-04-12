@@ -17,7 +17,7 @@ class TestTemplate(Fixtures):
         The Template().render method returns a RenderedTemplate. The rendered template may
         have
         """
-        t = Template(provider=provider, custom_helpers=[])
+        t = Template(provider=provider, helpers=None)
 
         rendered = t.render(vars={'environment': 'test', 'result': 'okay'})
 
@@ -54,7 +54,7 @@ class TestTemplate(Fixtures):
 
     @mark.parametrize('provider', ['invalid.yaml'], indirect=True)
     def test_render_jinja_error_handling(self, provider):
-        t = Template(provider=provider, custom_helpers=[])
+        t = Template(provider=provider)
 
         rendered = t.render(vars={'environment': "test"})
 
