@@ -61,11 +61,16 @@ class RenderedTemplate(dict):
 
 
 class Template:
+    class TemplateRenderingException(Exception):
+        def __init__(self, template):
+            super().__init__("Template could not be rendered")
+            self.template = template
+
     def __init__(self, provider: GenericProvider, helpers: TemplateHelpers = None):
         self.provider = provider
         self.helpers  = helpers
 
-    def render(self, vars: dict) -> str:
+    def render(self, vars: dict, fail_on_error: bool = False) -> str:
         raw_template = str(self.provider.template(), 'utf-8')
 
         content = None
@@ -74,17 +79,16 @@ class Template:
         if self.helpers:
             self.helpers.inject(env)
 
+        content = None
         # This will fail if rendered template can't be processed via Jinja2 (e.g. undefined variable access etc)
         try:
             content = env.from_string(source=raw_template).render(vars)
-        except Exception as ex:
-            return FailedTemplate(source=raw_template, location=str(self.provider), error=ex)
-
-        # This will fail if rendered template can not be parsed as value YAML
-        try:
             return RenderedTemplate(content=content)
         except Exception as ex:
-            return FailedTemplate(source=content, location=str(self.provider), error=ex)
+            template = FailedTemplate(source=(content or raw_template), location=str(self.provider), error=ex)
+            if fail_on_error:
+                raise self.TemplateRenderingException(template)
+            return template
 
 
 class TemplateWithConfig(Template):
@@ -95,5 +99,5 @@ class TemplateWithConfig(Template):
 
         super().__init__(provider, helpers=helpers)
 
-    def render(self) -> str:
-        return super().render(self.vars)
+    def render(self, fail_on_error: bool = False) -> str:
+        return super().render(self.vars, fail_on_error=fail_on_error)

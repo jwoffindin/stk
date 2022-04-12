@@ -9,6 +9,7 @@ from rich.table import Table
 
 from . import VERSION
 from .config import Config
+# from .stack import Stack
 from .template import TemplateWithConfig
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -31,15 +32,22 @@ def stk():
 
 @stk.command()
 @common_stack_params
+def validate(stack: str, env: str, config_path: str, template_path: str):
+    config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
+    template = TemplateWithConfig(config.template_source.provider(), config)
+
+    aws_settings = config.aws
+    print(aws_settings)
+    # stack = Stack(aws=config.aws)
+    # stack.validate(template=template.render(fail_on_error=True))
+
+
+@stk.command()
+@common_stack_params
 def show_template(stack: str, env: str, config_path: str, template_path: str):
     config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
-
-    source = config.template_source
-
-    template = TemplateWithConfig(source.provider(), config)
-    rendered = template.render()
-
-    print(rendered)
+    template = TemplateWithConfig(config.template_source.provider(), config)
+    print(template.render())
 
 
 @stk.command()

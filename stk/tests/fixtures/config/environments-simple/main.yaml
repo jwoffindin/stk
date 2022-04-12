@@ -16,3 +16,6 @@ environments:
       a: this is top-level environment - P1
     params:
       p1: this is top-level environment param - P1
+
+aws:
+  region: ap-southeast-2

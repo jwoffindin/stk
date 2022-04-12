@@ -6,3 +6,6 @@ environments:
   test:
     vars:
       fuzzy_level: maximum
+
+aws:
+  region: ap-southeast-2

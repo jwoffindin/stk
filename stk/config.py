@@ -16,6 +16,11 @@ class Config:
         value: str
         error: str
 
+    @dataclass
+    class AwsSettings:
+        region: str
+        account_id: str = None
+
     class Vars(dict):
         MAX_INTERPOLATION_DEPTH = 10
 
@@ -107,12 +112,13 @@ class Config:
 
         includes = cfg.load_includes()
 
-        self.vars = Config.Vars(includes.fetch_dict('vars', environment, { 'environment': environment }))
-        self.params = Config.InterpolatedDict(includes.fetch_dict('params', environment), self.vars)
+        self.vars = self.Vars(includes.fetch_dict('vars', environment, { 'environment': environment }))
+        self.params = self.InterpolatedDict(includes.fetch_dict('params', environment), self.vars)
         self.helpers = list(includes.fetch_set('helpers', environment))
+        self.aws = self.AwsSettings(**includes.fetch_dict('aws', 'environment'))
 
         # Templates may be in git (local filesystem or remote), or just a working directory
-        cfn_template_settings = Config.InterpolatedDict(includes.fetch_dict('template', environment, { 'name': name, 'version': 'main', 'repo': template_path}), self.vars)
+        cfn_template_settings = self.InterpolatedDict(includes.fetch_dict('template', environment, { 'name': name, 'version': 'main', 'repo': template_path}), self.vars)
         self.template_source = TemplateSource(**cfn_template_settings)
 
     def var(self, name):

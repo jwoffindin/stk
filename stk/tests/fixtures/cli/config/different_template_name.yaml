@@ -8,3 +8,6 @@ environments:
   test:
     vars:
       fuzzy_level: uncanny
+
+aws:
+  region: ap-southeast-2

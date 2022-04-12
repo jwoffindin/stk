@@ -9,3 +9,5 @@ environments:
   dev:
   test:
   prod:
+aws:
+  region: ap-southeast-2
