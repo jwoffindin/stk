@@ -1,0 +1,9 @@
+---
+include:
+  - common
+
+template:
+  name: a_template
+
+environments:
+  test:

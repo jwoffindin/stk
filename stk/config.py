@@ -14,6 +14,12 @@ class Config:
         key: str
         value: str
         error: str
+
+    @dataclass
+    class TemplateSource:
+        name: str
+        version: str
+        repo: str
     class Vars(dict):
         MAX_INTERPOLATION_DEPTH = 10
 
@@ -86,7 +92,7 @@ class Config:
                     raise(Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
 
 
-    def __init__(self, name: str, environment: str, config_path: str, var_overrides: dict = {}, param_overrides: dict = {}):
+    def __init__(self, name: str, environment: str, config_path: str, template_path: str = None, var_overrides: dict = {}, param_overrides: dict = {}):
         self.name = name
         self.environment = environment
         self.config_path = config_path
@@ -99,22 +105,17 @@ class Config:
 
         includes = cfg.load_includes()
 
-        self._vars = Config.Vars(includes.fetch_dict('vars', environment))
-        self._params = Config.InterpolatedDict(includes.fetch_dict('params', environment), self._vars)
+        self.vars = Config.Vars(includes.fetch_dict('vars', environment))
+        self.params = Config.InterpolatedDict(includes.fetch_dict('params', environment), self.vars)
 
-
-    def vars(self):
-        return self._vars
+        # Templates may be in git (local filesystem or remote), or just a working directory
+        cfn_template_settings = Config.InterpolatedDict(includes.fetch_dict('template', environment, { 'name': name, 'version': 'main', 'repo': template_path}), self.vars)
+        self.template = Config.TemplateSource(**cfn_template_settings)
 
     def var(self, name):
-        return self._vars.get(name)
-
-    def params(self):
-        return self._params
+        return self.vars.get(name)
 
     def param(self, name):
-        if name not in self._params:
-            return None
-        return self._params[name]
+        return self.params.get(name)
 
 

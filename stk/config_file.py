@@ -4,8 +4,8 @@ from pathlib import Path
 from yaml import safe_load
 
 class ConfigFiles(list):
-    def fetch_dict(self, key, environment):
-        ret_val = {}
+    def fetch_dict(self, key, environment, defaults: dict = {}):
+        ret_val = dict(defaults)
 
         for config_file in self:
             # Top-level key in file is lowest priority
@@ -19,7 +19,7 @@ class ConfigFiles(list):
 
 
 class ConfigFile(dict):
-    EXPECTED_KEYS = ['vars', 'params', 'environments', 'include']
+    EXPECTED_KEYS = ['vars', 'params', 'environments', 'include', 'template']
 
     def __init__(self, filename: str, config_dir: str):
         self.filename = filename
