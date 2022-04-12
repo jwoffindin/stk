@@ -1,2 +1,2 @@
 def helper(self, arg):
-    return 42
+    return arg + 1
