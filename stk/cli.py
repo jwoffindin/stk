@@ -6,8 +6,6 @@ from os import environ
 from rich.console import Console
 from rich.table import Table
 
-from .template_helper_loader import TemplateHelperLoader
-
 from . import VERSION
 from .config import Config
 from .template import TemplateWithConfig

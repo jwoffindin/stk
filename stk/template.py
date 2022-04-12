@@ -3,7 +3,7 @@ from cfn_tools import load_yaml
 from jinja2 import Environment, StrictUndefined
 
 from .provider import GenericProvider
-from .template_helper_loader import TemplateHelperLoader
+from .template_helpers import TemplateHelpers
 from .config import Config
 from .template_helpers import TemplateHelpers
 class FailedTemplate(dict):
@@ -91,11 +91,7 @@ class TemplateWithConfig(Template):
     def __init__(self, provider: GenericProvider, config: Config):
         self.vars = config.vars
 
-        loader = TemplateHelperLoader(provider=provider, namespace="config")
-
-        custom_helpers = loader.load_helpers(config.helpers)
-
-        helpers = TemplateHelpers(custom_helpers=custom_helpers)
+        helpers = TemplateHelpers(provider=provider, custom_helpers=config.helpers)
 
         super().__init__(provider, helpers=helpers)
 

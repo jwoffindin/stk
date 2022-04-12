@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from os import path
 from pathlib import Path
 from yaml import safe_load

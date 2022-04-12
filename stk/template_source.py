@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+
 from .provider import provider
 
 @dataclass

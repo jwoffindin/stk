@@ -1,12 +1,12 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from pathlib import Path
 from jinja2 import Environment, StrictUndefined
+from pathlib import Path
 from sys import exc_info
 from yaml import safe_load
 
-from .config_file import ConfigFile
 from . import ConfigException
+from .config_file import ConfigFile
 from .template_source import TemplateSource
 
 class Config:

@@ -1,5 +1,4 @@
 ---
 # Sample CFN template that exercises helpers
 foo_should_be_42: "{{ a_custom_helper(41) }}"
-
 resourcify: "{{ resourcify('foo_bar-baz') }}"

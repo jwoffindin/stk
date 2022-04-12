@@ -5,7 +5,7 @@ from . import Fixtures
 from ..config import Config
 from ..provider import GenericProvider
 from ..template import RenderedTemplate, TemplateWithConfig
-from ..template_helper_loader import TemplateHelperLoader
+from ..template_helpers import TemplateHelpers
 from ..template_source import TemplateSource
 
 class TestTemplateHelpers(Fixtures):
@@ -29,11 +29,9 @@ class TestTemplateHelpers(Fixtures):
         assert set(config.helpers) == set(['a_custom_helper', 'this_one_should_appear_only_once', 'another_custom_helper'])
 
     def test_custom_helpers_loaded_from_provider(self, provider: GenericProvider, config: Config, env):
-        helpers = TemplateHelperLoader(provider, namespace='global').load_helpers(['a_custom_helper'])
+        helpers = TemplateHelpers(provider, custom_helpers=['a_custom_helper'])
 
-        assert len(helpers) == 1
-
-        helpers[0].inject(env, context={})
+        helpers.inject(env)
 
         assert 'a_custom_helper' in env.globals
         assert env.globals['a_custom_helper'](41) == 42
