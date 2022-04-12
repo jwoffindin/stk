@@ -35,8 +35,6 @@ class Config:
             if failed_keys:
                 raise Exception(f"An error occurred: {failed_keys}")
 
-            print(f"final {self}")
-
         def expand(self, vars: dict):
             """
             Updates `self` with final interpolated values from initial dict `vars`.
