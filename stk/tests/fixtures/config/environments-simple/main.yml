@@ -4,9 +4,15 @@ include:
 
 vars:
   a: should not be returned
-  b: this is top-level default
+  b: this is top-level default - P2
+
+params:
+  p1: should not be returned
+  p2: this is top-level default param - P2
 
 environments:
   test:
     vars:
-      a: this is top-level environment
+      a: this is top-level environment - P1
+    params:
+      p1: this is top-level environment param - P1

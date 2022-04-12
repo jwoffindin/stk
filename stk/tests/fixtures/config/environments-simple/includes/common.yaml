@@ -1,9 +1,14 @@
 ---
 vars:
   c: should not be returned
-  d: this is included default
+  d: this is included default - P4
+params:
+  p3: should not be returned
+  p4: this is included default param - P4
 
 environments:
   test:
     vars:
-      c: this is included environment
+      c: this is included environment - P3
+    params:
+      p3: this is included environment param - P3

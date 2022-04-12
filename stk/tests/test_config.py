@@ -44,7 +44,14 @@ class TestIncludedConfig(ConfigFixtures):
 class TestEnvironmentalPrecdenceConfig(ConfigFixtures):
     def test_var_precedence(self, config):
         v = config.vars()
-        assert v['a'] == 'this is top-level environment'
-        assert v['b'] == 'this is top-level default'
-        assert v['c'] == 'this is included environment'
-        assert v['d'] == 'this is included default'
+        assert v['a'] == 'this is top-level environment - P1'
+        assert v['b'] == 'this is top-level default - P2'
+        assert v['c'] == 'this is included environment - P3'
+        assert v['d'] == 'this is included default - P4'
+
+    def test_param_precedence(self, config):
+        v = config.params()
+        assert v['p1'] == 'this is top-level environment param - P1'
+        assert v['p2'] == 'this is top-level default param - P2'
+        assert v['p3'] == 'this is included environment param - P3'
+        assert v['p4'] == 'this is included default param - P4'
