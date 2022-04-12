@@ -1,5 +1,6 @@
 #!/usr/bin/env python3 -m stk.cli
 
+import functools
 import click
 
 from os import environ
@@ -12,17 +13,24 @@ from .template import TemplateWithConfig
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
+# Add @common_stack_params decorator for commands that need stack/environment
+def common_stack_params(func):
+    @click.argument('stack')
+    @click.argument('env')
+    @click.option('--config-path', default=environ.get('CONFIG_PATH', '.'), help='Path to config project')
+    @click.option('--template-path', default=environ.get('TEMPLATE_PATH', '.'), help='Path to templates')
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
+
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version=VERSION)
 def stk():
     pass
 
-
 @stk.command()
-@click.argument('stack')
-@click.argument('env')
-@click.option('--config-path', default=environ.get('CONFIG_PATH', '.'), help='Path to config project')
-@click.option('--template-path', default=environ.get('TEMPLATE_PATH', '.'), help='Path to templates')
+@common_stack_params
 def show_template(stack: str, env: str, config_path: str, template_path: str):
     config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
 
@@ -35,10 +43,8 @@ def show_template(stack: str, env: str, config_path: str, template_path: str):
 
 
 @stk.command()
-@click.argument('stack')
-@click.argument('env')
-@click.option('--config-path', default=environ.get('CONFIG_PATH', '.'), help='Path to config project')
-def show_config(stack: str, env: str, config_path: str):
+@common_stack_params
+def show_config(stack: str, env: str, config_path: str, template_path: str):
     config = Config(name=stack, environment=env, config_path=config_path)
 
     template = config.template_source
