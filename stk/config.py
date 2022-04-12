@@ -1,12 +1,14 @@
 
 from __future__ import annotations
 from dataclasses import dataclass
+from pathlib import Path
 from jinja2 import Environment, StrictUndefined
 from sys import exc_info
 from yaml import safe_load
 
 from .config_file import ConfigFile
 from . import ConfigException
+from .template_source import TemplateSource
 
 class Config:
     @dataclass
@@ -15,11 +17,6 @@ class Config:
         value: str
         error: str
 
-    @dataclass
-    class TemplateSource:
-        name: str
-        version: str
-        repo: str
     class Vars(dict):
         MAX_INTERPOLATION_DEPTH = 10
 
@@ -95,7 +92,15 @@ class Config:
         self.environment = environment
         self.config_path = config_path
 
-        cfg = ConfigFile(filename=name + '.yml', config_dir=self.config_path)
+        try:
+            filename = Path(name)
+            if not filename.suffix:
+                filename = filename.with_suffix('.yaml')
+
+            cfg = ConfigFile(filename=filename, config_dir=self.config_path)
+        except FileNotFoundError as err:
+            print("Configuration file {cfg.filename} not found in {config.path}")
+            raise
 
         # Validate specified environment is defined in the top-level config file
         if environment not in cfg.environments():
@@ -103,12 +108,12 @@ class Config:
 
         includes = cfg.load_includes()
 
-        self.vars = Config.Vars(includes.fetch_dict('vars', environment))
+        self.vars = Config.Vars(includes.fetch_dict('vars', environment, { 'environment': environment }))
         self.params = Config.InterpolatedDict(includes.fetch_dict('params', environment), self.vars)
 
         # Templates may be in git (local filesystem or remote), or just a working directory
         cfn_template_settings = Config.InterpolatedDict(includes.fetch_dict('template', environment, { 'name': name, 'version': 'main', 'repo': template_path}), self.vars)
-        self.template = Config.TemplateSource(**cfn_template_settings)
+        self.template = TemplateSource(**cfn_template_settings)
 
     def var(self, name):
         return self.vars.get(name)

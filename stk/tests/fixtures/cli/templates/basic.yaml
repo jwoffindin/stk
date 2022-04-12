@@ -1,0 +1,7 @@
+---
+# This is a sample template for {{ environment }} environment
+Resources:
+  ATestResource:
+    Type: AWS::InvalidResourceType
+    Parameters:
+      Fuzziness: "{{ fuzzy_level }}"

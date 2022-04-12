@@ -8,6 +8,7 @@ from rich.table import Table
 
 from . import VERSION
 from .config import Config
+from .template import Template
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -16,6 +17,20 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.version_option(version=VERSION)
 def stk():
     pass
+
+
+@stk.command()
+@click.argument('stack')
+@click.argument('env')
+@click.option('--config-path', default=environ.get('CONFIG_PATH', '.'), help='Path to config project')
+@click.option('--template-path', default=environ.get('TEMPLATE_PATH', '.'), help='Path to templates')
+def show_template(stack: str, env: str, config_path: str, template_path: str):
+    config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
+
+    template = Template(provider=config.template.provider())
+    rendered = template.render(config.vars)
+
+    print(rendered)
 
 
 @stk.command()

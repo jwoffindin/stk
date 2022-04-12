@@ -1,0 +1,11 @@
+---
+template_version: 1.0
+interpolated: 'Environment {{ environment }} is {{ result }}'
+
+## if False
+should_be_excluded: true
+## endif
+
+## for i in range(3)
+"item_{{ i }}": "{{ i }}"
+## endfor

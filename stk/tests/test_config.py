@@ -7,13 +7,13 @@ from . import ConfigFixtures
 @pytest.mark.parametrize('config', ['empty'], indirect=True)
 class TestEmptyConfig(ConfigFixtures):
     def test_empty(self, config):
-        assert list(config.vars.keys()) == []
+        assert list(config.vars.keys()) == ['environment']
         assert list(config.params.keys()) == []
 
 @pytest.mark.parametrize('config', ['simple'], indirect=True)
 class TestSimpleConfig(ConfigFixtures):
     def test_simple_load_vars(self, config):
-        assert list(config.vars.keys()) == ['foo' ,'bar']
+        assert list(config.vars.keys()) == ['environment', 'foo' ,'bar']
         assert config.var('bar') == 'hello, world!'
 
     def test_simple_load_params(self, config):
@@ -24,7 +24,7 @@ class TestSimpleConfig(ConfigFixtures):
 class TestIncludedConfig(ConfigFixtures):
     def test_include_vars(self, config):
         v = config.vars
-        assert sorted(v.keys()) == ['a', 'b', 'c', 'd']
+        assert sorted(v.keys()) == ['a', 'b', 'c', 'd', 'environment']
 
         assert v['a'] == 'this is top-level'
         assert v['b'] == 'this is from first.yaml'

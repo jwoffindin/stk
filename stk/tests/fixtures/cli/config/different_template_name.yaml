@@ -1,0 +1,10 @@
+# This config file shows how to specify the template by name, rather than using
+# default (same as config file name)
+---
+template:
+  name: basic
+
+environments:
+  test:
+    vars:
+      fuzzy_level: uncanny

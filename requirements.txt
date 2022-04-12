@@ -4,3 +4,4 @@ pyyaml
 pytest-xdist
 jinja2
 rich
+cfn-flip

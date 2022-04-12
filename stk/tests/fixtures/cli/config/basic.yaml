@@ -1,0 +1,8 @@
+---
+vars:
+  fuzzy_level: none
+
+environments:
+  test:
+    vars:
+      fuzzy_level: maximum

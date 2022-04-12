@@ -12,7 +12,7 @@ class TestConfigFile(ConfigFixtures):
     def test_load_configs(self, config_file):
         configs = config_file.load_includes()
 
-        assert ['includes/second.yaml', 'includes/third.yaml', 'includes/first.yaml', 'main.yml'] == list(c.filename for c in configs)
+        assert ['includes/second.yaml', 'includes/third.yaml', 'includes/first.yaml', 'main.yaml'] == list(c.filename for c in configs)
 
     def test_environments(self, config_file):
         assert config_file.environments() == ['dev', 'test', 'prod']
