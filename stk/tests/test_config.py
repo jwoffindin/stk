@@ -1,17 +1,8 @@
 import os
 import pytest
 
-from os import path
-from ..config import Config
 
-class ConfigFixtures():
-    def fixture_path(self, *dir):
-        return path.join(path.dirname(__file__), "fixtures", *dir)
-
-    @pytest.fixture
-    def config(self, request):
-        return Config('main', environment="test", config_path=self.fixture_path('config', request.param))
-
+from . import ConfigFixtures
 
 @pytest.mark.parametrize('config', ['empty'], indirect=True)
 class TestEmptyConfig(ConfigFixtures):
@@ -28,3 +19,13 @@ class TestSimpleConfig(ConfigFixtures):
     def test_simple_load_params(self, config):
         assert list(config.params().keys()) == ['jane']
         assert config.param('jane') == 'Jane said "hello, world!"'
+# @pytest.mark.parametrize('config', ['includes'], indirect=True)
+# class TestIncludedConfig(ConfigFixtures):
+#     def test_include_vars(self, config):
+#         v = config.vars()
+#         assert list(v.keys()) == ['a', 'b', 'c', 'd']
+
+#         assert v['a'] == 'this is top-level'
+#         assert v['b'] == 'this is first include that should override second include'
+#         assert v['c'] == 'this is from second.yaml'
+#         assert v['d'] == 'this is from third.yaml'

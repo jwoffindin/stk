@@ -1,0 +1,7 @@
+---
+include:
+  - second
+  - third
+vars:
+  a: should not appear - overwritten by main.yml
+  b: this is from first.yaml

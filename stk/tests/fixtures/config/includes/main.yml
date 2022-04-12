@@ -1,0 +1,10 @@
+---
+include:
+  - first
+vars:
+  a: this is top-level
+
+environments:
+  dev:
+  test:
+  prod:

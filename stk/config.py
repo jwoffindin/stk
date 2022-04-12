@@ -1,30 +1,12 @@
 
-from os import path
+from __future__ import annotations
+from dataclasses import dataclass
+from jinja2 import Environment, StrictUndefined
 from sys import exc_info
 from yaml import safe_load
-from jinja2 import Template, Environment, StrictUndefined
-from dataclasses import dataclass
 
-class ConfigFile(dict):
-    EXPECTED_KEYS = ['vars', 'params', 'environments']
-    def __init__(self, filename: str):
-        self.filename = filename
-
-        self['vars'] = {}
-        self['params'] = {}
-
-        cfg = safe_load(open(filename)) or dict()
-        super().__init__(cfg)
-        self._ensure_valid_keys()
-
-    def _ensure_valid_keys(self):
-        """
-        Ensure config file only contains expected keys
-        """
-        unknown_keys = set(self.keys()) - set(self.EXPECTED_KEYS)
-
-        if unknown_keys:
-            raise Exception(f"Config file {self.filename} has unexpected keys: {unknown_keys}")
+from .config_file import ConfigFile
+from . import ConfigException
 
 class Config:
     @dataclass
@@ -113,9 +95,17 @@ class Config:
         self.environment = environment
         self.config_path = config_path
 
-        self._cfg = ConfigFile(path.join(config_path, name + '.yml'))
-        self._vars = Config.Vars(self._cfg['vars'])
-        self._params = Config.InterpolatedDict(self._cfg['params'], self._vars)
+        cfg = ConfigFile(filename=name + '.yml', config_dir=self.config_path)
+
+        # Validate specified environment is defined in the top-level config file
+        if environment not in cfg.environments():
+            raise ConfigException(f"Environment {environment} is not a valid environment for {cfg.filename}. Only {cfg.environments()} permitted.")
+
+
+        cfg.load_includes()
+
+        self._vars = Config.Vars(cfg['vars'])
+        self._params = Config.InterpolatedDict(cfg['params'], self._vars)
 
 
     def vars(self):
@@ -131,3 +121,5 @@ class Config:
         if name not in self._params:
             return None
         return self._params[name]
+
+

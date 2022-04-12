@@ -4,3 +4,6 @@ vars:
   bar: "hello, {{ foo }}!"
 params:
   jane: Jane said "{{ bar }}"
+
+environments:
+  test:
