@@ -9,17 +9,25 @@ class ConfigFiles(list):
 
         for config_file in self:
             # Top-level key in file is lowest priority
-            if key in config_file:
-                ret_val.update(config_file[key])
+            ret_val.update(config_file.get(key, {}))
 
             # Environment-specific key is higher priority
             ret_val.update(config_file.environment(environment).get(key, {}))
 
         return ret_val
 
+    def fetch_set(self, key, environment, defaults: list = []):
+        ret_val = set(defaults)
+
+        for config_file in self:
+            ret_val.update(config_file.get(key, []))
+            ret_val.update(config_file.environment(environment).get(key, []))
+
+        return ret_val
+
 
 class ConfigFile(dict):
-    EXPECTED_KEYS = ['vars', 'params', 'environments', 'include', 'template']
+    EXPECTED_KEYS = ['vars', 'params', 'environments', 'include', 'helpers', 'template']
 
     def __init__(self, filename: str, config_dir: str):
         self.filename = filename
@@ -28,6 +36,7 @@ class ConfigFile(dict):
         self['vars'] = {}
         self['params'] = {}
         self['include'] = []
+        self['helpers'] = []
         self['environments'] = {}
 
         config_path = path.join(config_dir, filename)

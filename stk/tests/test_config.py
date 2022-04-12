@@ -59,7 +59,7 @@ class TestEnvironmentalPrecdenceConfig(ConfigFixtures):
 @pytest.mark.parametrize('config', ['templates'], indirect=True)
 class TestEnvironmentalPrecdenceConfig(ConfigFixtures):
     def test_precedence(self, config):
-        t = config.template
+        source = config.template_source
 
-        assert t.name == 'a_template'
-        assert t.version == 'main'
+        assert source.name == 'a_template'
+        assert source.version == 'main'

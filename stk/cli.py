@@ -6,10 +6,11 @@ from os import environ
 from rich.console import Console
 from rich.table import Table
 
+from .template_helper_loader import TemplateHelperLoader
+
 from . import VERSION
 from .config import Config
 from .template import Template
-
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -27,7 +28,14 @@ def stk():
 def show_template(stack: str, env: str, config_path: str, template_path: str):
     config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
 
-    template = Template(provider=config.template.provider())
+    source = config.template_source
+
+    provider = source.provider()
+
+    loader = TemplateHelperLoader(provider=provider, namespace="config")
+    helpers = loader.load_helpers(config.helpers)
+
+    template = Template(source.provider(), custom_helpers=helpers)
     rendered = template.render(config.vars)
 
     print(rendered)
@@ -40,7 +48,7 @@ def show_template(stack: str, env: str, config_path: str, template_path: str):
 def show_config(stack: str, env: str, config_path: str):
     config = Config(name=stack, environment=env, config_path=config_path)
 
-    template = config.template
+    template = config.template_source
     template_table = Table("Property", "Value", title="Template Source")
     template_table.add_row("Template Name", template.name)
     template_table.add_row("Version", template.version)

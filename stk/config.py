@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
@@ -110,10 +109,11 @@ class Config:
 
         self.vars = Config.Vars(includes.fetch_dict('vars', environment, { 'environment': environment }))
         self.params = Config.InterpolatedDict(includes.fetch_dict('params', environment), self.vars)
+        self.helpers = list(includes.fetch_set('helpers', environment))
 
         # Templates may be in git (local filesystem or remote), or just a working directory
         cfn_template_settings = Config.InterpolatedDict(includes.fetch_dict('template', environment, { 'name': name, 'version': 'main', 'repo': template_path}), self.vars)
-        self.template = TemplateSource(**cfn_template_settings)
+        self.template_source = TemplateSource(**cfn_template_settings)
 
     def var(self, name):
         return self.vars.get(name)

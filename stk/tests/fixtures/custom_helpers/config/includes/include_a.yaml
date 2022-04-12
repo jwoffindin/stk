@@ -1,0 +1,4 @@
+---
+helpers:
+  - another_custom_helper
+  - this_one_should_appear_only_once

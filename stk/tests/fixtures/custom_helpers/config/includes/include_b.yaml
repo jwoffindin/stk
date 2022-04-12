@@ -1,0 +1,3 @@
+---
+helpers:
+  - this_one_should_appear_only_once

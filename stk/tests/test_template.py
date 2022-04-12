@@ -3,12 +3,13 @@ from pytest import fixture, mark
 from . import Fixtures
 from ..template import RenderedTemplate, Template, FailedTemplate
 from ..template_source import TemplateSource
-
+from ..provider import provider
 class TestTemplate(Fixtures):
     @fixture
     def provider(self, request):
         p = self.fixture_path('templates', 'simple')
-        return TemplateSource(name=request.param, version=None, repo=p).provider()
+        source = TemplateSource(name=request.param, version=None, repo=p)
+        return provider(source)
 
     @mark.parametrize('provider', ['main.yaml'], indirect=True)
     def test_render_simple_template(self, provider):
@@ -16,7 +17,7 @@ class TestTemplate(Fixtures):
         The Template().render method returns a RenderedTemplate. The rendered template may
         have
         """
-        t = Template(provider=provider)
+        t = Template(provider=provider, custom_helpers=[])
 
         rendered = t.render(vars={'environment': 'test', 'result': 'okay'})
 
@@ -37,7 +38,7 @@ class TestTemplate(Fixtures):
 
     @mark.parametrize('provider', ['main.yaml'], indirect=True)
     def test_render_jinja_error_handling(self, provider):
-        t = Template(provider=provider)
+        t = Template(provider=provider, custom_helpers=[])
 
         rendered = t.render(vars={})
 
@@ -53,7 +54,7 @@ class TestTemplate(Fixtures):
 
     @mark.parametrize('provider', ['invalid.yaml'], indirect=True)
     def test_render_jinja_error_handling(self, provider):
-        t = Template(provider=provider)
+        t = Template(provider=provider, custom_helpers=[])
 
         rendered = t.render(vars={'environment': "test"})
 

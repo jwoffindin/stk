@@ -1,0 +1,10 @@
+---
+include:
+  - include_a
+  - include_b
+
+helpers:
+  - a_custom_helper
+
+environments:
+  test:
