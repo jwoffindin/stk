@@ -1,4 +1,5 @@
 from __future__ import annotations
+import hashlib
 from cfn_tools import load_yaml
 from jinja2 import Environment, StrictUndefined
 
@@ -9,7 +10,8 @@ from .template_helpers import TemplateHelpers
 class FailedTemplate(dict):
     ERROR_CONTEXT_LINES = 3
 
-    def __init__(self, source: str, location: str = 'unknown', error: Exception = None):
+    def __init__(self, name: str, source: str, location: str = 'unknown', error: Exception = None):
+        self.name = name
         self.source = source
         self.location = location
         self.error = error
@@ -49,16 +51,22 @@ class FailedTemplate(dict):
         return "\n".join(code)
 
 class RenderedTemplate(dict):
-    def __init__(self, content: str):
+    def __init__(self, name: str, content: str):
         self.content = content
+        self.name = name
+        self.error = None  # enables if Template().render().error:...
 
         parsed = load_yaml(content)
-        if parsed:
-            self.update(parsed)
+        if not hasattr(parsed, 'keys'):
+            raise Exception(f"Template result is a {type(parsed)}, expected dict")
+        self.update(parsed)
 
     def __str__(self) -> str:
         return self.content
 
+    def md5(self) -> str:
+        content = self.content.encode('utf-8')
+        return hashlib.md5(content).hexdigest()
 
 class Template:
     class TemplateRenderingException(Exception):
@@ -66,7 +74,8 @@ class Template:
             super().__init__("Template could not be rendered")
             self.template = template
 
-    def __init__(self, provider: GenericProvider, helpers: TemplateHelpers = None):
+    def __init__(self, name: str, provider: GenericProvider, helpers: TemplateHelpers = None):
+        self.name = name # Make is useful when uploading to S3
         self.provider = provider
         self.helpers  = helpers
 
@@ -83,21 +92,21 @@ class Template:
         # This will fail if rendered template can't be processed via Jinja2 (e.g. undefined variable access etc)
         try:
             content = env.from_string(source=raw_template).render(vars)
-            return RenderedTemplate(content=content)
-        except Exception as ex:
-            template = FailedTemplate(source=(content or raw_template), location=str(self.provider), error=ex)
+            return RenderedTemplate(name=self.name, content=content)
+        except (BaseException, ValueError) as ex:
+            template = FailedTemplate(name=self.name, source=(content or raw_template), location=str(self.provider), error=ex)
             if fail_on_error:
                 raise self.TemplateRenderingException(template)
             return template
 
 
 class TemplateWithConfig(Template):
-    def __init__(self, provider: GenericProvider, config: Config):
+    def __init__(self, name: str, provider: GenericProvider, config: Config):
         self.vars = config.vars
 
         helpers = TemplateHelpers(provider=provider, custom_helpers=config.helpers)
 
-        super().__init__(provider, helpers=helpers)
+        super().__init__(name=name, provider=provider, helpers=helpers)
 
     def render(self, fail_on_error: bool = False) -> str:
         return super().render(self.vars, fail_on_error=fail_on_error)

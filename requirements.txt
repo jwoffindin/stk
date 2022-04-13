@@ -5,3 +5,6 @@ pytest-xdist
 jinja2
 rich
 cfn-flip
+moto
+docker # seems to be required for moto
+cfn-lint # moto requirement (for cfn validation)

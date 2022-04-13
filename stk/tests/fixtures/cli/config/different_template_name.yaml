@@ -1,13 +1,13 @@
 # This config file shows how to specify the template by name, rather than using
 # default (same as config file name)
 ---
+include:
+  - common
+
 template:
   name: basic
 
 environments:
   test:
     vars:
-      fuzzy_level: uncanny
-
-aws:
-  region: ap-southeast-2
+      topic_name: another_topic

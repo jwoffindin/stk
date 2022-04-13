@@ -1,5 +1,7 @@
 #!/usr/bin/env python3 -m stk.cli
 
+from __future__ import annotations
+
 import functools
 import click
 
@@ -9,8 +11,8 @@ from rich.table import Table
 
 from . import VERSION
 from .config import Config
-# from .stack import Stack
-from .template import TemplateWithConfig
+from .stack import Stack
+from .template import TemplateWithConfig, Template
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -34,19 +36,29 @@ def stk():
 @common_stack_params
 def validate(stack: str, env: str, config_path: str, template_path: str):
     config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
-    template = TemplateWithConfig(config.template_source.provider(), config)
+    template = TemplateWithConfig(name=stack, provider=config.template_source.provider(), config=config).render()
 
-    aws_settings = config.aws
-    print(aws_settings)
-    # stack = Stack(aws=config.aws)
-    # stack.validate(template=template.render(fail_on_error=True))
+    if template.error:
+        print("---------------\n", template, "\n----------------\n")
+        print('Template is NOT ok - could not be parsed')
+        exit(-1)
+
+    stack = Stack(aws=config.aws)
+    errors = stack.validate(template)
+
+    if errors:
+        print('Template is NOT ok - failed validation')
+        print(errors)
+        exit(-1)
+    else:
+        print("Template is ok")
 
 
 @stk.command()
 @common_stack_params
 def show_template(stack: str, env: str, config_path: str, template_path: str):
     config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
-    template = TemplateWithConfig(config.template_source.provider(), config)
+    template = TemplateWithConfig(name=stack, provider=config.template_source.provider(), config=config)
     print(template.render())
 
 

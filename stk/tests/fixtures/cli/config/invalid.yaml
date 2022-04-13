@@ -2,8 +2,5 @@
 include:
   - common
 
-vars:
-  topic_name: a_topic
-
 environments:
   test:
