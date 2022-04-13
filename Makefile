@@ -11,4 +11,4 @@ test:
 	source .venv/bin/activate && pytest .
 
 make test_loop:
-	source .venv/bin/activate && pytest . --looponfail
+	source .venv/bin/activate && ptw --runner "pytest --picked --testmon"

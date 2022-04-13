@@ -1,10 +1,21 @@
 click
 pytest
 pyyaml
-pytest-xdist
 jinja2
 rich
 cfn-flip
 moto
 docker # seems to be required for moto
 cfn-lint # moto requirement (for cfn validation)
+
+# Test libraries that allow for efficient loop-testing of
+#
+# https://stackoverflow.com/questions/35097577/pytest-run-only-the-changed-file
+#
+# pytest-xdist was annoyingly triggered by temporary files written by moto library
+# with no obvious workaround other that restructuring project or hacking tests to
+# run in different root.
+#
+pytest-picked
+pytest-testmon
+pytest-watch
