@@ -28,7 +28,7 @@ class ConfigFiles(list):
 
 
 class ConfigFile(dict):
-    EXPECTED_KEYS = ['aws', 'params', 'environments', 'include', 'helpers', 'template', 'vars']
+    EXPECTED_KEYS = ['aws', 'core', 'environments', 'helpers', 'include', 'params', 'template', 'vars']
 
     def __init__(self, filename: str, config_dir: str):
         self.filename = filename

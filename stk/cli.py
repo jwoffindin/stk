@@ -6,6 +6,7 @@ import functools
 import click
 
 from os import environ
+from pytest import fail
 from rich.console import Console
 from rich.table import Table
 
@@ -43,7 +44,7 @@ def validate(stack: str, env: str, config_path: str, template_path: str):
         print('Template is NOT ok - could not be parsed')
         exit(-1)
 
-    stack = Stack(aws=config.aws)
+    stack = Stack(aws=config.aws, name=config.core.stack_name)
     errors = stack.validate(template)
 
     if errors:
@@ -52,6 +53,22 @@ def validate(stack: str, env: str, config_path: str, template_path: str):
         exit(-1)
     else:
         print("Template is ok")
+
+
+@stk.command()
+@common_stack_params
+def create(stack: str, env: str, config_path: str, template_path: str):
+    config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
+    template = TemplateWithConfig(name=stack, provider=config.template_source.provider(), config=config).render(fail_on_error=True)
+
+    stack_name = config.core.stack_name
+
+    print("Creating stack", stack_name)
+
+    stack = Stack(aws=config.aws, name=stack_name)
+    stack.create(template)
+
+    print("Stack created successfully")
 
 
 @stk.command()

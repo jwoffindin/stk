@@ -25,7 +25,7 @@ class TestCliShowTemplate(CliFixtures, StackFixtures):
         assert 'TopicName: "a_topic"' in cli.output
         assert cli.exit_code == 0
 
-    @mark.parametrize('args', [['show-template', 'different_template_name', 'test']], indirect=True)
+    @mark.parametrize('args', [['show-template', 'different-template-name', 'test']], indirect=True)
     def test_show_failed_template(self, cli):
         assert 'TopicName: "another_topic"' in cli.output
         assert cli.exit_code == 0
@@ -43,9 +43,9 @@ class TestCliValidateTemplate(CliFixtures):
         assert 'Template is NOT ok' in cli.output
         assert cli.exit_code == -1
 
-# class TestCliCreate(CliFixtures):
-#     @mark.parametrize('args', [['create', 'basic', 'test']], indirect=True)
-#     def test_create_stack(self, cli):
-#         assert 'Creating stack test-basic' in cli.output
-#         assert 'stack created successfully' in cli.output
-#         assert cli.exit_code == 0
+class TestCliCreate(CliFixtures):
+    @mark.parametrize('args', [['create', 'basic', 'test']], indirect=True)
+    def test_create_stack(self, cli):
+        assert 'Creating stack test-basic' in cli.output
+        assert 'Stack created successfully' in cli.output
+        assert cli.exit_code == 0

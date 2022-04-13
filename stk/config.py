@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+import re
+
 from dataclasses import dataclass
 from jinja2 import Environment, StrictUndefined
 from pathlib import Path
@@ -21,6 +24,20 @@ class Config:
         region: str
         account_id: str = None
 
+    @dataclass
+    class CoreSettings:
+        # Attributes
+        stack_name: str
+
+        # DEFAULTS are pre-interpolation values so can't set them via attributes
+        DEFAULTS = { 'stack_name': "{{ environment }}-{{ name }}" }
+
+        # stack name
+        valid_stack_name = re.compile('^(i?)[a-z0-9-]+$').match
+
+        def __post_init__(self):
+            if type(self.stack_name) != str or not self.valid_stack_name(self.stack_name):
+                raise ValueError(f"Stack name {self.stack_name} is invalid. Can contain only alphanumeric characters and hyphens")
     class Vars(dict):
         MAX_INTERPOLATION_DEPTH = 10
 
@@ -90,7 +107,6 @@ class Config:
                 except Exception as ex:
                     raise(Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
 
-
     def __init__(self, name: str, environment: str, config_path: str, template_path: str = None, var_overrides: dict = {}, param_overrides: dict = {}):
         self.name = name
         self.environment = environment
@@ -112,10 +128,12 @@ class Config:
 
         includes = cfg.load_includes()
 
-        self.vars = self.Vars(includes.fetch_dict('vars', environment, { 'environment': environment }))
+        self.vars = self.Vars(includes.fetch_dict('vars', environment, { 'name': name, 'environment': environment }))
         self.params = self.InterpolatedDict(includes.fetch_dict('params', environment), self.vars)
         self.helpers = list(includes.fetch_set('helpers', environment))
+
         self.aws = self.AwsSettings(**includes.fetch_dict('aws', 'environment'))
+        self.core = self.CoreSettings(**self.InterpolatedDict(includes.fetch_dict('core', environment, self.CoreSettings.DEFAULTS), self.vars))
 
         # Templates may be in git (local filesystem or remote), or just a working directory
         cfn_template_settings = self.InterpolatedDict(includes.fetch_dict('template', environment, { 'name': name, 'version': 'main', 'repo': template_path}), self.vars)
