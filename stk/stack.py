@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import boto3
 
 from datetime import datetime
@@ -5,9 +7,8 @@ from datetime import datetime
 from .config import Config
 from .template import RenderedTemplate
 class StackException(Exception):
-    def __init__(self, stack, message, response = None):
+    def __init__(self, stack: Stack, message: str, response = None):
         super().__init__(message)
-
         self.stack = stack
         self.response = response
 class Stack:
@@ -18,14 +19,11 @@ class Stack:
         self.cfn = boto3.client("cloudformation", region_name=self.aws.region)
         self.s3  = boto3.client("s3", region_name=self.aws.region)
 
-        self.bucket_name = "foo"
+        self.bucket_name = aws.cfn_bucket
 
     def validate(self, template: RenderedTemplate):
         template_url = self.upload(template)
-
         self.cfn.validate_template(TemplateURL=template_url)
-
-        return None
 
     def create(self, template: RenderedTemplate):
         change_set_name = datetime.now().strftime('stack-create-%Y%m%d%H%M%S')
@@ -34,12 +32,13 @@ class Stack:
         if change_set['ExecutionStatus'] != 'AVAILABLE':
             raise Exception(f"Changeset could not be created (status={change_set['ExecutionStatus']}")
 
-        self.execute_change_set(change_set)
+        self.execute_change_set(change_set['ChangeSetId'])
 
 
     def create_change_set(self, template: RenderedTemplate, change_set_name: str):
-        template_url = self.upload(template)
+        print(f"Creating change set {change_set_name} for {self.name}")
 
+        template_url = self.upload(template)
         res = self.cfn.create_change_set(StackName=self.name, TemplateURL=template_url, ChangeSetName=change_set_name, ChangeSetType='CREATE')
 
         if 'Id' not in res:
@@ -47,8 +46,8 @@ class Stack:
 
         return self.cfn.describe_change_set(StackName=self.name, ChangeSetName=res['Id'])
 
-    def execute_change_set(self, change_set):
-        return self.cfn.execute_change_set(StackName=self.name, ChangeSetName=change_set['ChangeSetId'])
+    def execute_change_set(self, change_set_name):
+        return self.cfn.execute_change_set(StackName=self.name, ChangeSetName=change_set_name)
 
     def upload(self, template):
         template_path = "/".join([template.md5(), template.name])

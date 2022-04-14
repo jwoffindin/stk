@@ -37,7 +37,7 @@ class TestTemplateHelpers(Fixtures):
         assert env.globals['a_custom_helper'](41) == 42
 
     def test_custom_helpers_available_in_template(self, provider: GenericProvider, config: Config, env):
-        template = TemplateWithConfig(name="test", provider=provider, config=config)
+        template = TemplateWithConfig(provider=provider, config=config)
 
         rendered = template.render()
 

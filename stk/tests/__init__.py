@@ -50,5 +50,5 @@ class StackFixtures(Fixtures):
 
     @fixture
     def stack(self, cloudformation, s3):
-        aws_settings = Config.AwsSettings(region="us-east-1")
+        aws_settings = Config.AwsSettings(region="us-east-1", cfn_bucket="foo")
         yield Stack(aws=aws_settings, name="test-stack")

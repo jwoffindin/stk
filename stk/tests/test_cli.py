@@ -43,9 +43,16 @@ class TestCliValidateTemplate(CliFixtures):
         assert 'Template is NOT ok' in cli.output
         assert cli.exit_code == -1
 
-class TestCliCreate(CliFixtures):
-    @mark.parametrize('args', [['create', 'basic', 'test']], indirect=True)
-    def test_create_stack(self, cli):
-        assert 'Creating stack test-basic' in cli.output
-        assert 'Stack created successfully' in cli.output
+# class TestCliCreate(CliFixtures):
+#     @mark.parametrize('args', [['create', 'basic', 'test']], indirect=True)
+#     def test_create_stack(self, cli):
+#         assert 'Creating stack test-basic' in cli.output
+#         assert 'Stack created successfully' in cli.output
+#         assert cli.exit_code == 0
+
+class TestCliCreateChangeSet(CliFixtures):
+    @mark.parametrize('args', [['create-change-set', 'basic', 'test', 'my-change-set']], indirect=True)
+    def test_create_change_set(self, cli):
+        assert 'Creating change set my-change-set for test-basic' in cli.output
+        assert 'Change set created successfully' in cli.output
         assert cli.exit_code == 0

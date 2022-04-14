@@ -19,7 +19,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 # Add @common_stack_params decorator for commands that need stack/environment
 def common_stack_params(func):
-    @click.argument('stack')
+    @click.argument('name')
     @click.argument('env')
     @click.option('--config-path', default=environ.get('CONFIG_PATH', '.'), help='Path to config project')
     @click.option('--template-path', default=environ.get('TEMPLATE_PATH', '.'), help='Path to templates')
@@ -35,9 +35,9 @@ def stk():
 
 @stk.command()
 @common_stack_params
-def validate(stack: str, env: str, config_path: str, template_path: str):
-    config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
-    template = TemplateWithConfig(name=stack, provider=config.template_source.provider(), config=config).render()
+def validate(name: str, env: str, config_path: str, template_path: str):
+    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
+    template = TemplateWithConfig(provider=config.template_source.provider(), config=config).render()
 
     if template.error:
         print("---------------\n", template, "\n----------------\n")
@@ -57,9 +57,9 @@ def validate(stack: str, env: str, config_path: str, template_path: str):
 
 @stk.command()
 @common_stack_params
-def create(stack: str, env: str, config_path: str, template_path: str):
-    config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
-    template = TemplateWithConfig(name=stack, provider=config.template_source.provider(), config=config).render(fail_on_error=True)
+def create(name: str, env: str, config_path: str, template_path: str):
+    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
+    template = TemplateWithConfig(provider=config.template_source.provider(), config=config).render(fail_on_error=True)
 
     stack_name = config.core.stack_name
 
@@ -73,16 +73,43 @@ def create(stack: str, env: str, config_path: str, template_path: str):
 
 @stk.command()
 @common_stack_params
-def show_template(stack: str, env: str, config_path: str, template_path: str):
-    config = Config(name=stack, environment=env, config_path=config_path, template_path=template_path)
-    template = TemplateWithConfig(name=stack, provider=config.template_source.provider(), config=config)
+@click.argument('change_set_name')
+def create_change_set(name: str, env: str, config_path: str, template_path: str, change_set_name: str):
+    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
+    stack = Stack(aws=config.aws, name=config.core.stack_name)
+
+    template = TemplateWithConfig(provider=config.template_source.provider(), config=config).render(fail_on_error=True)
+    change_set = stack.create_change_set(template=template, change_set_name=change_set_name)
+
+    print(change_set)
+
+    print("Change set created successfully")
+
+
+@stk.command()
+@common_stack_params
+@click.argument('change_set_name')
+def execute_change_set(name: str, env: str, config_path: str, template_path: str, change_set_name: str):
+    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
+    stack = Stack(aws=config.aws, name=config.core.stack_name)
+
+    res = stack.execute_change_set(change_set_name=change_set_name)
+
+    print(res)
+
+
+@stk.command()
+@common_stack_params
+def show_template(name: str, env: str, config_path: str, template_path: str):
+    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
+    template = TemplateWithConfig(provider=config.template_source.provider(), config=config)
     print(template.render())
 
 
 @stk.command()
 @common_stack_params
-def show_config(stack: str, env: str, config_path: str, template_path: str):
-    config = Config(name=stack, environment=env, config_path=config_path)
+def show_config(name: str, env: str, config_path: str, template_path: str):
+    config = Config(name=name, environment=env, config_path=config_path)
 
     template = config.template_source
     template_table = Table("Property", "Value", title="Template Source")

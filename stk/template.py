@@ -75,6 +75,9 @@ class Template:
             self.template = template
 
     def __init__(self, name: str, provider: GenericProvider, helpers: TemplateHelpers = None):
+        if type(name) != str:
+            raise Exception(f"Invalid template name {name}")
+
         self.name = name # Make is useful when uploading to S3
         self.provider = provider
         self.helpers  = helpers
@@ -101,12 +104,12 @@ class Template:
 
 
 class TemplateWithConfig(Template):
-    def __init__(self, name: str, provider: GenericProvider, config: Config):
+    def __init__(self, provider: GenericProvider, config: Config):
         self.vars = config.vars
 
         helpers = TemplateHelpers(provider=provider, custom_helpers=config.helpers)
 
-        super().__init__(name=name, provider=provider, helpers=helpers)
+        super().__init__(name=config.template_source.name, provider=provider, helpers=helpers)
 
     def render(self, fail_on_error: bool = False) -> str:
         return super().render(self.vars, fail_on_error=fail_on_error)

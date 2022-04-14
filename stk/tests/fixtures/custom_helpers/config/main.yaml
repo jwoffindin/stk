@@ -10,3 +10,4 @@ environments:
   test:
 aws:
   region: us-east-1
+  cfn_bucket: foo

@@ -22,8 +22,8 @@ class Config:
     @dataclass
     class AwsSettings:
         region: str
+        cfn_bucket: str
         account_id: str = None
-
     @dataclass
     class CoreSettings:
         # Attributes
@@ -132,12 +132,9 @@ class Config:
         self.params = self.InterpolatedDict(includes.fetch_dict('params', environment), self.vars)
         self.helpers = list(includes.fetch_set('helpers', environment))
 
-        self.aws = self.AwsSettings(**includes.fetch_dict('aws', 'environment'))
+        self.aws = self.AwsSettings(**includes.fetch_dict('aws', environment))
         self.core = self.CoreSettings(**self.InterpolatedDict(includes.fetch_dict('core', environment, self.CoreSettings.DEFAULTS), self.vars))
-
-        # Templates may be in git (local filesystem or remote), or just a working directory
-        cfn_template_settings = self.InterpolatedDict(includes.fetch_dict('template', environment, { 'name': name, 'version': 'main', 'repo': template_path}), self.vars)
-        self.template_source = TemplateSource(**cfn_template_settings)
+        self.template_source = TemplateSource(**self.InterpolatedDict(includes.fetch_dict('template', environment, { 'name': name, 'version': 'main', 'repo': template_path}), self.vars))
 
     def var(self, name):
         return self.vars.get(name)

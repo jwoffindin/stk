@@ -11,3 +11,4 @@ environments:
   prod:
 aws:
   region: us-east-1
+  cfn_bucket: foo
