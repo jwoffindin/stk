@@ -1,0 +1,6 @@
+---
+include:
+  - common
+
+environments:
+  dev:

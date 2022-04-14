@@ -100,6 +100,32 @@ def execute_change_set(name: str, env: str, config_path: str, template_path: str
 
 @stk.command()
 @common_stack_params
+@click.argument('change_set_name')
+def delete_change_set(name: str, env: str, config_path: str, template_path: str, change_set_name: str):
+    """
+    Deletes named change set.
+    """
+    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
+    stack = Stack(aws=config.aws, name=config.core.stack_name)
+
+    res = stack.delete_change_set(change_set_name=change_set_name)
+
+    print(res)
+
+@stk.command()
+@common_stack_params
+def delete(name: str, env: str, config_path: str, template_path: str):
+    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
+    stack = Stack(aws=config.aws, name=config.core.stack_name)
+
+    res = stack.delete()
+
+    print(res)
+
+
+
+@stk.command()
+@common_stack_params
 def show_template(name: str, env: str, config_path: str, template_path: str):
     config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
     template = TemplateWithConfig(provider=config.template_source.provider(), config=config)

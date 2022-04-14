@@ -12,6 +12,7 @@ from . import ConfigException
 from .config_file import ConfigFile
 from .template_source import TemplateSource
 
+
 class Config:
     @dataclass
     class InterpolationError:
@@ -24,20 +25,22 @@ class Config:
         region: str
         cfn_bucket: str
         account_id: str = None
+
     @dataclass
     class CoreSettings:
         # Attributes
         stack_name: str
 
         # DEFAULTS are pre-interpolation values so can't set them via attributes
-        DEFAULTS = { 'stack_name': "{{ environment }}-{{ name }}" }
+        DEFAULTS = {"stack_name": "{{ environment }}-{{ name }}"}
 
         # stack name
-        valid_stack_name = re.compile('^(i?)[a-z0-9-]+$').match
+        valid_stack_name = re.compile("^(i?)[a-z0-9-]+$").match
 
         def __post_init__(self):
             if type(self.stack_name) != str or not self.valid_stack_name(self.stack_name):
                 raise ValueError(f"Stack name {self.stack_name} is invalid. Can contain only alphanumeric characters and hyphens")
+
     class Vars(dict):
         MAX_INTERPOLATION_DEPTH = 10
 
@@ -73,16 +76,13 @@ class Config:
                 for key in unexpanded_keys:
                     value = vars[key]
                     try:
-                        if type(value) in [bool, dict, list, str]:
-                            tpl = env.from_string(str(value)) # convert value to jinja2 template
-                            result = str(tpl.render(self))
-
-                            value = safe_load(result) or ""
-                            self[key] = value
-                        else:
-                            # Don't try and process this value as Jinja template
-                            self[key] = value
                         del errors[key]
+                        if type(value) in [bool, dict, list, str]:
+                            tpl = env.from_string(str(value))  # convert value to jinja2 template
+                            result = str(tpl.render(self))
+                            self[key] = safe_load(result) or ""
+                        else:
+                            self[key] = value  # Don't try and process this value as Jinja template
                         del vars[key]
                     except Exception:
                         errors[key] = Config.InterpolationError(key, value, exc_info()[1])
@@ -105,9 +105,17 @@ class Config:
                     if parsed_value != None:
                         self[k] = parsed_value
                 except Exception as ex:
-                    raise(Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
+                    raise (Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
 
-    def __init__(self, name: str, environment: str, config_path: str, template_path: str = None, var_overrides: dict = {}, param_overrides: dict = {}):
+    def __init__(
+        self,
+        name: str,
+        environment: str,
+        config_path: str,
+        template_path: str = None,
+        var_overrides: dict = {},
+        param_overrides: dict = {},
+    ):
         self.name = name
         self.environment = environment
         self.config_path = config_path
@@ -115,7 +123,7 @@ class Config:
         try:
             filename = Path(name)
             if not filename.suffix:
-                filename = filename.with_suffix('.yaml')
+                filename = filename.with_suffix(".yaml")
 
             cfg = ConfigFile(filename=filename, config_dir=self.config_path)
         except FileNotFoundError as err:
@@ -128,18 +136,29 @@ class Config:
 
         includes = cfg.load_includes()
 
-        self.vars = self.Vars(includes.fetch_dict('vars', environment, { 'name': name, 'environment': environment }))
-        self.params = self.InterpolatedDict(includes.fetch_dict('params', environment), self.vars)
-        self.helpers = list(includes.fetch_set('helpers', environment))
-
-        self.aws = self.AwsSettings(**includes.fetch_dict('aws', environment))
-        self.core = self.CoreSettings(**self.InterpolatedDict(includes.fetch_dict('core', environment, self.CoreSettings.DEFAULTS), self.vars))
-        self.template_source = TemplateSource(**self.InterpolatedDict(includes.fetch_dict('template', environment, { 'name': name, 'version': 'main', 'repo': template_path}), self.vars))
+        self.vars = self.Vars(includes.fetch_dict("vars", environment, {"name": name, "environment": environment}))
+        self.params = self.InterpolatedDict(includes.fetch_dict("params", environment), self.vars)
+        self.helpers = list(includes.fetch_set("helpers", environment))
+        self.aws = self.AwsSettings(**includes.fetch_dict("aws", environment))
+        self.core = self.CoreSettings(
+            **self.InterpolatedDict(
+                includes.fetch_dict("core", environment, self.CoreSettings.DEFAULTS),
+                self.vars,
+            )
+        )
+        self.template_source = TemplateSource(
+            **self.InterpolatedDict(
+                includes.fetch_dict(
+                    "template",
+                    environment,
+                    {"name": name, "version": "main", "repo": template_path},
+                ),
+                self.vars,
+            )
+        )
 
     def var(self, name):
         return self.vars.get(name)
 
     def param(self, name):
         return self.params.get(name)
-
-
