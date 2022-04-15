@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import boto3
 
-from botocore.exceptions import ClientError
-from datetime import datetime, timezone
+from botocore.exceptions import ClientError, WaiterError
+from datetime import datetime
+from rich.table import Table
+from rich.console import Console
 
 from .stack_waiter import StackWaiter
 from .config import Config
@@ -32,29 +34,48 @@ class Stack:
         self.cfn.validate_template(TemplateURL=template_url)
 
     def create(self, template: RenderedTemplate):
-        change_set_name = datetime.now().strftime("stack-create-%Y%m%d%H%M%S")
+        change_set_name = datetime.now().strftime("stack-%Y%m%d%H%M%S")
         change_set = self.create_change_set(template, change_set_name)
 
+        self.print_change_set(change_set)
         if change_set["ExecutionStatus"] != "AVAILABLE":
-            raise Exception(f"Changeset could not be created (status={change_set['ExecutionStatus']}")
+            # TODO Delete change set
+            return
 
         self.execute_change_set(change_set["ChangeSetId"])
 
+    def update(self, template: RenderedTemplate):
+        return self.create(template)  # same thing
+
+    def print_change_set(self, c):
+        t = Table("Property", "Value", title="Change Set")
+        t.add_row("Stack Name", c.get("StackName", "-"))
+        t.add_row("Stack ID", c.get("StackId", "-"))
+        t.add_row("Execution Status", c.get("ExecutionStatus", "-"))
+        t.add_row("Status", c.get("Status", "-"))
+        t.add_row("Reason", c.get("StatusReason", "-"))
+
+        c = Console().print(t)
+
+        print(c)
+
     def create_change_set(self, template: RenderedTemplate, change_set_name: str):
         print(f"Creating change set {change_set_name} for {self.name}")
+
+        change_set_type = "CREATE" if not self.exists() else "UPDATE"
 
         template_url = self.upload(template)
         res = self.cfn.create_change_set(
             StackName=self.name,
             TemplateURL=template_url,
             ChangeSetName=change_set_name,
-            ChangeSetType="CREATE",
+            ChangeSetType=change_set_type,
         )
 
-        if "Id" not in res:
-            raise StackException(self, "Could not create change set", response=res)
-
-        self.wait("change_set_create_complete", ChangeSetName=res["Id"])
+        try:
+            self.wait("change_set_create_complete", ChangeSetName=res["Id"])
+        except WaiterError as ex:
+            pass
         return self.cfn.describe_change_set(ChangeSetName=res["Id"])
 
     def delete_change_set(self, change_set_name: str):
@@ -105,4 +126,5 @@ class Stack:
             raise (e)
 
     def wait(self, waiter_name, **kwargs):
-        StackWaiter(self).wait(waiter_name, **kwargs)
+        resources = {}
+        StackWaiter(self).wait(waiter_name, resources, **kwargs)
