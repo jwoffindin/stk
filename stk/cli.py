@@ -69,9 +69,8 @@ def create(name: str, env: str, config_path: str, template_path: str):
     print("Creating stack", stack_name)
 
     stack = Stack(aws=config.aws, name=stack_name)
-    stack.create(template)
-
-    print("Stack created successfully")
+    if stack.create(template):
+        print("Stack created successfully")
 
 
 @stk.command()
@@ -85,9 +84,8 @@ def update(name: str, env: str, config_path: str, template_path: str):
     print("Updating stack", stack_name)
 
     stack = Stack(aws=config.aws, name=stack_name)
-    stack.update(template)
-
-    print("Stack created updated")
+    if stack.update(template):
+        print("Stack updated successfully")
 
 
 @stk.command()

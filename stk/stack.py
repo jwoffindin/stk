@@ -34,7 +34,21 @@ class Stack:
         self.cfn.validate_template(TemplateURL=template_url)
 
     def create(self, template: RenderedTemplate):
-        change_set_name = datetime.now().strftime("stack-%Y%m%d%H%M%S")
+        if self.exists():
+            print(f"Stack {self.name} already exists")
+            return None
+
+        return self.create_and_apply_change_set("create", template)
+
+    def update(self, template: RenderedTemplate):
+        if not self.exists():
+            print(f"Stack {self.name} does not exist")
+            return None
+
+        return self.create_and_apply_change_set("update", template)
+
+    def create_and_apply_change_set(self, action: str, template: RenderedTemplate):
+        change_set_name = datetime.now().strftime(f"stack-{action}-%Y%m%d%H%M%S")
         change_set = self.create_change_set(template, change_set_name)
 
         self.print_change_set(change_set)
@@ -43,9 +57,6 @@ class Stack:
             return
 
         self.execute_change_set(change_set["ChangeSetId"])
-
-    def update(self, template: RenderedTemplate):
-        return self.create(template)  # same thing
 
     def print_change_set(self, c):
         t = Table("Property", "Value", title="Change Set")
