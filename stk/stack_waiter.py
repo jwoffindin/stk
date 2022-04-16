@@ -4,6 +4,7 @@ from botocore.exceptions import ClientError
 
 from rich.table import Table
 from rich.live import Live
+from rich.console import Console
 
 
 class StackWaiter:
@@ -14,32 +15,60 @@ class StackWaiter:
         self.start_time = datetime.now(timezone.utc)
 
     class ResourceEvent:
-        def __init__(self, e):
-            self.event_id = e["EventId"]
-            self.logical_id = e["LogicalResourceId"]
-            self.type = e["ResourceType"]
-            self.status = e["ResourceStatus"]
-            self.timestamp = e["Timestamp"].astimezone()
+        def __init__(self, *args, **kwargs):
+            if kwargs:
+                self.logical_id = kwargs["logical_id"]
+                self.type = kwargs["type"]
+                self.status = "-"
+                self.timestamp = None
+            elif len(args) > 0:
+                assert len(args) == 1
+                event = args[0]
+
+                self.logical_id = event["LogicalResourceId"]
+                self.type = event["ResourceType"]
+                self.event_id = event["EventId"]
+                self.status = event["ResourceStatus"]
+                self.timestamp = event["Timestamp"].astimezone()
 
         def last_seen(self):
             return "%ds ago" % (datetime.now().astimezone() - self.timestamp).seconds if self.timestamp else "-"
 
-    def wait(self, waiter_name, resources, **kwargs):
+    def wait_for_change_set(self, waiter_name, change_set_name):
         waiter = self.cfn.get_waiter(waiter_name)
-        self.resources = resources
-
-        with Live(self.refresh_table(), refresh_per_second=1, transient=False) as live:
+        with Console().status("Waiting for change set...") as status:
 
             def waiter_callback(response):
-                live.update(self.refresh_table())
                 if "Stacks" in response:
                     s = response["Stacks"][0]
-                    print(s["StackStatus"])
+                    status.update(s["StackStatus"])
                 elif "Error" in response:
-                    print(response["Error"]["Message"])
+                    status.update(response["Error"]["Message"])
 
             waiter = self.wrap_waiter(waiter, waiter_callback)
-            waiter.wait(WaiterConfig={"Delay": 5}, **kwargs)
+            waiter.wait(WaiterConfig={"Delay": 5}, ChangeSetName=change_set_name)
+
+    def wait_for_stack(self, waiter_name, change_set, **kwargs):
+        waiter = self.cfn.get_waiter(waiter_name)
+
+        # If we are applying a change set, we know what resources will be changed, so can
+        # pre-populate the table with resources.
+        self.resources = self.resources_in_changeset(change_set) if change_set else {}
+
+        # Wait with a live-updated table showing resources to be changed, and their current
+        # state.
+        if self.resources:
+            with Live(self.refresh_table(), refresh_per_second=1, transient=False) as live:
+
+                def waiter_callback(response):
+                    live.update(self.refresh_table())
+                    if "Stacks" in response:
+                        pass
+                    elif "Error" in response:
+                        print(response["Error"]["Message"])
+
+                waiter = self.wrap_waiter(waiter, waiter_callback)
+                waiter.wait(WaiterConfig={"Delay": 5}, **kwargs)
 
     def refresh_table(self):
         self.process_new_events()
@@ -74,3 +103,21 @@ class StackWaiter:
         waiter._operation_method = wrapper
 
         return waiter
+
+    def resources_in_changeset(self, cs):
+        stack_name = self.stack.name
+        resources = {
+            stack_name: StackWaiter.ResourceEvent(
+                logical_id=stack_name,
+                type="AWS::CloudFormation::Stack",
+            )
+        }
+
+        for change in cs["Changes"]:
+            if "ResourceChange" in change:
+                rc = change["ResourceChange"]
+                resources[rc["LogicalResourceId"]] = StackWaiter.ResourceEvent(
+                    logical_id=rc["LogicalResourceId"],
+                    type=rc["ResourceType"],
+                )
+        return resources

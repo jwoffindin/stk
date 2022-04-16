@@ -6,6 +6,7 @@ from botocore.exceptions import ClientError, WaiterError
 from datetime import datetime
 from rich.table import Table
 from rich.console import Console
+from rich.prompt import Confirm
 
 from .stack_waiter import StackWaiter
 from .config import Config
@@ -38,7 +39,8 @@ class Stack:
             print(f"Stack {self.name} already exists")
             return None
 
-        return self.create_and_apply_change_set("create", template)
+        if not self.create_and_apply_change_set("create", template):
+            self.delete()
 
     def update(self, template: RenderedTemplate):
         if not self.exists():
@@ -48,32 +50,24 @@ class Stack:
         return self.create_and_apply_change_set("update", template)
 
     def create_and_apply_change_set(self, action: str, template: RenderedTemplate):
+        """
+        Creates a change set for given template (stack may, or may not, exist already)
+
+        Returns a false value if change could not be applied (or user cancels apply).
+        """
         change_set_name = datetime.now().strftime(f"stack-{action}-%Y%m%d%H%M%S")
         change_set = self.create_change_set(template, change_set_name)
 
-        self.print_change_set(change_set)
-        if change_set["ExecutionStatus"] != "AVAILABLE":
-            # TODO Delete change set
-            return
+        if change_set["ExecutionStatus"] == "AVAILABLE" and Confirm.ask(f"{action.capitalize()} {self.name} ?"):
+            return self.execute_change_set(change_set["ChangeSetId"])
 
-        self.execute_change_set(change_set["ChangeSetId"])
-
-    def print_change_set(self, c):
-        t = Table("Property", "Value", title="Change Set")
-        t.add_row("Stack Name", c.get("StackName", "-"))
-        t.add_row("Stack ID", c.get("StackId", "-"))
-        t.add_row("Execution Status", c.get("ExecutionStatus", "-"))
-        t.add_row("Status", c.get("Status", "-"))
-        t.add_row("Reason", c.get("StatusReason", "-"))
-
-        c = Console().print(t)
-
-        print(c)
+        return None
 
     def create_change_set(self, template: RenderedTemplate, change_set_name: str):
         print(f"Creating change set {change_set_name} for {self.name}")
 
-        change_set_type = "CREATE" if not self.exists() else "UPDATE"
+        status = self.status()
+        change_set_type = "UPDATE" if status and status != "REVIEW_IN_PROGRESS" else "CREATE"
 
         template_url = self.upload(template)
         res = self.cfn.create_change_set(
@@ -84,10 +78,14 @@ class Stack:
         )
 
         try:
-            self.wait("change_set_create_complete", ChangeSetName=res["Id"])
+            self.wait_for_change_set("change_set_create_complete", res["Id"])
         except WaiterError as ex:
             pass
-        return self.cfn.describe_change_set(ChangeSetName=res["Id"])
+
+        change_set = self.cfn.describe_change_set(ChangeSetName=res["Id"])
+        self.print_change_set(change_set)
+
+        return change_set
 
     def delete_change_set(self, change_set_name: str):
         print(f"Deleting change set {change_set_name}")
@@ -96,8 +94,15 @@ class Stack:
 
     def execute_change_set(self, change_set_name):
         print(f"Applying change set {change_set_name} to {self.name}")
+
+        change_set = self.cfn.describe_change_set(ChangeSetName=change_set_name)
         self.cfn.execute_change_set(StackName=self.name, ChangeSetName=change_set_name)
-        self.wait("stack_create_complete", StackName=self.name)
+
+        try:
+            self.wait_for_stack("stack_create_complete", change_set)
+            return True
+        except WaiterError as ex:
+            print("Change set could not be applied:", ex)
 
     def delete(self):
         if not self.exists():
@@ -106,7 +111,8 @@ class Stack:
 
         print(f"Destroying stack {self.name}")
         self.cfn.delete_stack(StackName=self.name)
-        self.wait("stack_delete_complete", StackName=self.name)
+        self.wait_for_stack("stack_delete_complete")
+        print("Stack deleted")
 
     def upload(self, template):
         template_path = "/".join([template.md5(), template.name])
@@ -136,6 +142,31 @@ class Stack:
                 return None
             raise (e)
 
-    def wait(self, waiter_name, **kwargs):
-        resources = {}
-        StackWaiter(self).wait(waiter_name, resources, **kwargs)
+    def wait_for_stack(self, waiter_name, change_set=None):
+        StackWaiter(self).wait_for_stack(waiter_name, change_set)
+
+    def wait_for_change_set(self, waiter_name, change_set_name):
+        StackWaiter(self).wait_for_change_set(waiter_name, change_set_name)
+
+    def print_change_set(self, change_set):
+        if change_set["ExecutionStatus"] == "AVAILABLE":
+            detail = Table("Resource", "Type", "Action", "Scope", "Details")
+            for rc in self.resources_change_in_changeset(change_set):
+                detail.add_row(rc["LogicalResourceId"], rc["ResourceType"], rc["Action"], str(rc["Scope"] or "-"), str(rc["Details"] or "-"))
+            change_set = Console().print(detail)
+        else:
+            summary = Table("Property", "Value", title="Change Set")
+            summary.add_row("Stack Name", change_set.get("StackName", "-"))
+            summary.add_row("Stack ID", change_set.get("StackId", "-"))
+            summary.add_row("Execution Status", change_set.get("ExecutionStatus", "-"))
+            summary.add_row("Status", change_set.get("Status", "-"))
+            summary.add_row("Reason", change_set.get("StatusReason", "-"))
+
+            Console().print(summary)
+
+    def resources_change_in_changeset(self, cs):
+        if "Changes" in cs:
+            for change in cs["Changes"]:
+                if "ResourceChange" in change:
+                    rs = change["ResourceChange"]
+                    yield (rs)
