@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import hashlib
+from pyclbr import Function
 import re
 import time
 
@@ -15,6 +16,7 @@ from stat import S_IFLNK
 from zipfile import ZipFile, ZipInfo, ZIP_BZIP2
 
 from .cfn_bucket import CfnBucket, Uploadable
+from .ignore_file import parse_ignore_list
 
 
 @dataclass
@@ -67,9 +69,24 @@ class TemplateHelpers:
         """
         return re.sub(r"(\A|\W)+(\w)", lambda m: m.group(2).upper(), str(name))
 
+    IGNORE_FILE = ".package-ignore"
+
     def lambda_uri(self, name: str) -> str:
         lambda_path = path.join("functions", name)
-        return self.bucket.upload(self.zip_tree(dir=lambda_path)).as_http()
+        return self.bucket.upload(self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path))).as_http()
+
+    def ignore_list(self, p: str) -> Function:
+        provider = self.provider
+
+        # Ignore files in $TEMPLATE_ROOT/$type/$name or $TEMPLATE_ROOT/$type
+        dir = Path(p)
+        ignore_files = [str(dir.parent / self.IGNORE_FILE), str(dir / self.IGNORE_FILE)]
+
+        # Make a merged ignore list (and also add the .package-ignore to the list)
+        ignore_content = "\n".join([self.IGNORE_FILE] + [str(provider.content(p), "utf-8") for p in ignore_files if provider.is_file(p)])
+
+        # Parse final list
+        return parse_ignore_list(ignore_content)
 
     def zip_tree(self, dir: str, ignore=None, prefix="") -> ZipContent:
         """
@@ -98,9 +115,6 @@ class TemplateHelpers:
         md5sum = hashlib.md5(str(sorted(checksums)).encode("utf-8")).hexdigest()
 
         return ZipContent(dir, zip_content.getvalue(), md5sum)
-
-    def upload(self, root) -> str:
-        return None
 
     def _load_custom_helper(self, name: str):
         """

@@ -21,10 +21,16 @@ class CfnBucketObject:
     key: str
 
     def as_http(self) -> str:
+        """
+        Return http url for object
+        """
         s3_hostname = f"{self.bucket.bucket_name}.s3.{self.bucket.region}.amazonaws.com"
         return "/".join(["https:/", s3_hostname, self.key])
 
-    def s3(self) -> str:
+    def as_s3(self) -> str:
+        """
+        Return s3:// url for object
+        """
         return "/".join(["s3:/", self.bucket.bucket_name, self.key])
 
 

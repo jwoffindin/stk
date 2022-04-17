@@ -31,7 +31,7 @@ class Stack:
         self.cfn = boto3.client("cloudformation", region_name=self.aws.region)
 
     def validate(self, template: RenderedTemplate):
-        self.cfn.validate_template(TemplateURL=self.bucket.upload(template).s3())
+        self.cfn.validate_template(TemplateURL=self.bucket.upload(template).as_s3())
 
     def create(self, template: RenderedTemplate):
         if self.exists():
@@ -68,7 +68,7 @@ class Stack:
         status = self.status()
         change_set_type = "UPDATE" if status and status != "REVIEW_IN_PROGRESS" else "CREATE"
 
-        template_url = self.bucket.upload(template).s3()
+        template_url = self.bucket.upload(template).as_s3()
         res = self.cfn.create_change_set(StackName=self.name, TemplateURL=template_url, ChangeSetName=change_set_name, ChangeSetType=change_set_type)
 
         try:

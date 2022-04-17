@@ -65,3 +65,16 @@ class TestTemplateHelpers(StackFixtures):
 
         uri2 = helpers.lambda_uri("a_function")
         assert uri == uri2, "Generated URLs are deterministic"
+
+    def test_package_ignore(self, provider):
+        helpers = TemplateHelpers(provider, bucket=None, custom_helpers=[])
+
+        # The template directory has some .package-ignore files that should be loaded
+        ignore = helpers.ignore_list("functions/a_function")
+        assert not ignore("foo")
+        assert ignore("a")
+        assert not ignore("b")
+        assert ignore("c")
+        assert not ignore("d")
+
+        assert ignore(".package-ignore")

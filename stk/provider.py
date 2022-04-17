@@ -30,6 +30,9 @@ class FilesystemProvider(GenericProvider):
     def content(self, file_path):
         return open(path.join(self.root, file_path), "rb").read()
 
+    def is_file(self, *p):
+        return path.isfile(path.join(self.root, *p))
+
     def find(self, dir, ignore=None):
         start_dir = path.abspath(path.join(self.root, dir))
 
