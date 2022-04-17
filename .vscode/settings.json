@@ -3,13 +3,12 @@
         "astimezone",
         "boto",
         "botocore",
+        "IFLNK",
+        "ISLNK",
+        "ISREG",
         "moto",
         "resourcify"
     ],
-    "yaml.schemas": {
-        "file:///toc.schema.json": "/toc\\.yml/i",
-        "https://raw.githubusercontent.com/awslabs/goformation/master/schema/cloudformation.schema.json": "file:///home/johnwo/src/stk/examples/minimal/templates/sns.yaml"
-    },
     "python.formatting.provider": "black",
     "[python]": {
         "editor.defaultFormatter": null,

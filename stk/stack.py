@@ -1,4 +1,6 @@
 from __future__ import annotations
+from dataclasses import dataclass
+from typing import List
 
 import boto3
 
@@ -11,6 +13,7 @@ from rich.prompt import Confirm
 from .stack_waiter import StackWaiter
 from .config import Config
 from .template import RenderedTemplate
+from .cfn_bucket import CfnBucket, Uploadable
 
 
 class StackException(Exception):
@@ -24,15 +27,11 @@ class Stack:
     def __init__(self, aws: Config.AwsSettings, name: str):
         self.aws = aws
         self.name = name
-
+        self.bucket = CfnBucket(aws)
         self.cfn = boto3.client("cloudformation", region_name=self.aws.region)
-        self.s3 = boto3.client("s3", region_name=self.aws.region)
-
-        self.bucket_name = aws.cfn_bucket
 
     def validate(self, template: RenderedTemplate):
-        template_url = self.upload(template)
-        self.cfn.validate_template(TemplateURL=template_url)
+        self.cfn.validate_template(TemplateURL=self.bucket.upload(template).s3())
 
     def create(self, template: RenderedTemplate):
         if self.exists():
@@ -69,13 +68,8 @@ class Stack:
         status = self.status()
         change_set_type = "UPDATE" if status and status != "REVIEW_IN_PROGRESS" else "CREATE"
 
-        template_url = self.upload(template)
-        res = self.cfn.create_change_set(
-            StackName=self.name,
-            TemplateURL=template_url,
-            ChangeSetName=change_set_name,
-            ChangeSetType=change_set_type,
-        )
+        template_url = self.bucket.upload(template).s3()
+        res = self.cfn.create_change_set(StackName=self.name, TemplateURL=template_url, ChangeSetName=change_set_name, ChangeSetType=change_set_type)
 
         try:
             self.wait_for_change_set("change_set_create_complete", res["Id"])
@@ -114,20 +108,6 @@ class Stack:
         self.wait_for_stack("stack_delete_complete")
         print("Stack deleted")
 
-    def upload(self, template):
-        template_path = "/".join([template.md5(), template.name])
-        self.s3.put_object(
-            Bucket=self.bucket_name,
-            Key=template_path,
-            Body=bytes(template.content, "utf-8"),
-            ServerSideEncryption="AES256",
-        )
-        return self.bucket_url(template_path)
-
-    def bucket_url(self, *path) -> str:
-        bucket_hostname = f"{self.bucket_name}.s3.{self.aws.region}.amazonaws.com"
-        return "/".join(["https:/", bucket_hostname, *path])
-
     def exists(self):
         return self.status() != None
 
@@ -152,7 +132,7 @@ class Stack:
         if change_set["ExecutionStatus"] == "AVAILABLE":
             detail = Table("Resource", "Type", "Action", "Scope", "Details")
             for rc in self.resources_change_in_changeset(change_set):
-                detail.add_row(rc["LogicalResourceId"], rc["ResourceType"], rc["Action"], str(rc["Scope"] or "-"), str(rc["Details"] or "-"))
+                detail.add_row(rc["LogicalResourceId"], rc["ResourceType"], rc["Action"], str(rc.get("Scope", "-")), str(rc.get("Details", "-")))
             change_set = Console().print(detail)
         else:
             summary = Table("Property", "Value", title="Change Set")

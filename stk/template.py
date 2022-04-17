@@ -4,13 +4,15 @@ from cfn_tools import load_yaml
 from jinja2 import Environment, StrictUndefined
 
 from .provider import GenericProvider
-from .template_helpers import TemplateHelpers
 from .config import Config
 from .template_helpers import TemplateHelpers
+from .cfn_bucket import CfnBucket, Uploadable
+
+
 class FailedTemplate(dict):
     ERROR_CONTEXT_LINES = 3
 
-    def __init__(self, name: str, source: str, location: str = 'unknown', error: Exception = None):
+    def __init__(self, name: str, source: str, location: str = "unknown", error: Exception = None):
         self.name = name
         self.source = source
         self.location = location
@@ -24,7 +26,7 @@ class FailedTemplate(dict):
         last_frame = traceback
         while traceback:
             filename = traceback.tb_frame.f_code.co_filename
-            if filename == '<template>':
+            if filename == "<template>":
                 break
             last_frame = traceback
             traceback = traceback.tb_next
@@ -37,7 +39,7 @@ class FailedTemplate(dict):
             return f"Error occurred outsite of template\n{str(self.error)}\n{filename}:{line_no}"
 
         line_no = traceback.tb_lineno
-        return f'{str(self.error)}\n{self.location} at line {line_no}:\n\n{self.source_context(line_no)}\n\n'
+        return f"{str(self.error)}\n{self.location} at line {line_no}:\n\n{self.source_context(line_no)}\n\n"
 
     def source_context(self, line_no: int) -> str:
         lines = self.source.split("\n")
@@ -47,17 +49,18 @@ class FailedTemplate(dict):
 
         code = []
         for i in range(from_line, to_line):
-            code.append("%4d : %s" % (i, lines[i-1]))
+            code.append("%4d : %s" % (i, lines[i - 1]))
         return "\n".join(code)
 
-class RenderedTemplate(dict):
+
+class RenderedTemplate(dict, Uploadable):
     def __init__(self, name: str, content: str):
         self.content = content
         self.name = name
         self.error = None  # enables if Template().render().error:...
 
         parsed = load_yaml(content)
-        if not hasattr(parsed, 'keys'):
+        if not hasattr(parsed, "keys"):
             raise Exception(f"Template result is a {type(parsed)}, expected dict")
         self.update(parsed)
 
@@ -65,8 +68,14 @@ class RenderedTemplate(dict):
         return self.content
 
     def md5(self) -> str:
-        content = self.content.encode('utf-8')
-        return hashlib.md5(content).hexdigest()
+        return hashlib.md5(self.body()).hexdigest()
+
+    def body(self) -> bytes:
+        return self.content.encode("utf-8")
+
+    def key(self) -> str:
+        return "/".join(["templates", self.name, self.md5() + ".zip"])
+
 
 class Template:
     class TemplateRenderingException(Exception):
@@ -78,12 +87,12 @@ class Template:
         if type(name) != str:
             raise Exception(f"Invalid template name {name}")
 
-        self.name = name # Make is useful when uploading to S3
+        self.name = name  # Make is useful when uploading to S3
         self.provider = provider
-        self.helpers  = helpers
+        self.helpers = helpers
 
     def render(self, vars: dict, fail_on_error: bool = False) -> str:
-        raw_template = str(self.provider.template(), 'utf-8')
+        raw_template = str(self.provider.template(), "utf-8")
 
         content = None
         env = Environment(line_statement_prefix="##", undefined=StrictUndefined)
@@ -107,7 +116,7 @@ class TemplateWithConfig(Template):
     def __init__(self, provider: GenericProvider, config: Config):
         self.vars = config.vars
 
-        helpers = TemplateHelpers(provider=provider, custom_helpers=config.helpers)
+        helpers = TemplateHelpers(provider=provider, bucket=CfnBucket(config=config.aws), custom_helpers=config.helpers)
 
         super().__init__(name=config.template_source.name, provider=provider, helpers=helpers)
 
