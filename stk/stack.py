@@ -58,7 +58,7 @@ class Stack:
         change_set = self.create_change_set(template, change_set_name)
 
         if change_set["ExecutionStatus"] == "AVAILABLE" and Confirm.ask(f"{action.capitalize()} {self.name} ?"):
-            return self.execute_change_set(change_set["ChangeSetId"])
+            return self.execute_change_set(action=action, change_set_name=change_set["ChangeSetId"])
 
         return None
 
@@ -68,8 +68,14 @@ class Stack:
         status = self.status()
         change_set_type = "UPDATE" if status and status != "REVIEW_IN_PROGRESS" else "CREATE"
 
-        template_url = self.bucket.upload(template).as_s3()
-        res = self.cfn.create_change_set(StackName=self.name, TemplateURL=template_url, ChangeSetName=change_set_name, ChangeSetType=change_set_type)
+        template_url = self.bucket.upload(template).as_http()
+        res = self.cfn.create_change_set(
+            StackName=self.name,
+            TemplateURL=template_url,
+            ChangeSetName=change_set_name,
+            ChangeSetType=change_set_type,
+            Capabilities=template.iam_capabilities(),
+        )
 
         try:
             self.wait_for_change_set("change_set_create_complete", res["Id"])
@@ -86,14 +92,14 @@ class Stack:
         res = self.cfn.delete_change_set(StackName=self.name, ChangeSetName=change_set_name)
         return res["ResponseMetadata"]["HTTPStatusCode"] == 200
 
-    def execute_change_set(self, change_set_name):
+    def execute_change_set(self, action: str, change_set_name: str):
         print(f"Applying change set {change_set_name} to {self.name}")
 
         change_set = self.cfn.describe_change_set(ChangeSetName=change_set_name)
         self.cfn.execute_change_set(StackName=self.name, ChangeSetName=change_set_name)
 
         try:
-            self.wait_for_stack("stack_create_complete", change_set)
+            self.wait_for_stack(f"stack_{action}_complete", change_set)
             return True
         except WaiterError as ex:
             print("Change set could not be applied:", ex)
@@ -104,7 +110,7 @@ class Stack:
             return
 
         print(f"Destroying stack {self.name}")
-        self.cfn.delete_stack(StackName=self.name)
+        res = self.cfn.delete_stack(StackName=self.name)
         self.wait_for_stack("stack_delete_complete")
         print("Stack deleted")
 
@@ -132,7 +138,9 @@ class Stack:
         if change_set["ExecutionStatus"] == "AVAILABLE":
             detail = Table("Resource", "Type", "Action", "Scope", "Details")
             for rc in self.resources_change_in_changeset(change_set):
-                detail.add_row(rc["LogicalResourceId"], rc["ResourceType"], rc["Action"], str(rc.get("Scope", "-")), str(rc.get("Details", "-")))
+                detail.add_row(
+                    rc["LogicalResourceId"], rc["ResourceType"], rc["Action"], str(rc.get("Scope", "-")), self.humanize_change_detail(rc.get("Details"))
+                )
             change_set = Console().print(detail)
         else:
             summary = Table("Property", "Value", title="Change Set")
@@ -143,6 +151,23 @@ class Stack:
             summary.add_row("Reason", change_set.get("StatusReason", "-"))
 
             Console().print(summary)
+
+    def humanize_change_detail(self, change_details: List[dict]) -> str:
+        ret_val = []
+        for change in change_details or []:
+            try:
+                target = change["Target"]
+                target_name = "[b]%s.%s[/b]" % (target["Attribute"], target["Name"])
+                if change["ChangeSource"] == "DirectModification":
+                    ret_val.append(f"{target_name} changed")
+                elif change["ChangeSource"] == "ResourceAttribute":
+                    ret_val.append(f"{target_name} changed by {change['CausingEntity']}")
+                else:
+                    ret_val.append(str(change))
+            except Exception as ex:
+                print(ex)
+                ret_val.append(str(change))
+        return "\n".join(ret_val)
 
     def resources_change_in_changeset(self, cs):
         if "Changes" in cs:

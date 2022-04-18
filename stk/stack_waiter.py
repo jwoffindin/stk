@@ -29,6 +29,7 @@ class StackWaiter:
                 self.type = event["ResourceType"]
                 self.event_id = event["EventId"]
                 self.status = event["ResourceStatus"]
+                self.status_reason = event.get("ResourceStatusReason", None)
                 self.timestamp = event["Timestamp"].astimezone()
 
         def last_seen(self):
@@ -57,18 +58,25 @@ class StackWaiter:
 
         # Wait with a live-updated table showing resources to be changed, and their current
         # state.
-        if self.resources:
-            with Live(self.refresh_table(), refresh_per_second=1, transient=False) as live:
+        self.console = Console()
+        try:
+            with Live(self.refresh_table(), refresh_per_second=1, transient=False, console=self.console) as live:
 
                 def waiter_callback(response):
                     live.update(self.refresh_table())
                     if "Stacks" in response:
+                        # self.console.log(response["Stacks"])
                         pass
                     elif "Error" in response:
-                        print(response["Error"]["Message"])
+                        self.console.log(response["Error"]["Message"])
 
                 waiter = self.wrap_waiter(waiter, waiter_callback)
                 waiter.wait(WaiterConfig={"Delay": 5}, **kwargs)
+        except ClientError as e:
+            error_received = e.response["Error"]
+            if (error_received["Code"] == "ValidationError") and ("does not exist" in error_received["Message"]):
+                return None
+            raise (e)
 
     def refresh_table(self):
         self.process_new_events()
@@ -78,19 +86,15 @@ class StackWaiter:
         return table
 
     def process_new_events(self):
-        try:
-            paginator = self.cfn.get_paginator("describe_stack_events")
-            for events in paginator.paginate(StackName=self.stack.name):
-                for e in events["StackEvents"]:
-                    resource = self.ResourceEvent(e)
-                    if resource.timestamp >= self.start_time and resource.event_id not in self.seen_events:
-                        self.resources[resource.logical_id] = resource
-                        self.seen_events.add(resource.event_id)
-        except ClientError as e:
-            error_received = e.response["Error"]
-            if (error_received["Code"] == "ValidationError") and ("does not exist" in error_received["Message"]):
-                return None
-            raise (e)
+        paginator = self.cfn.get_paginator("describe_stack_events")
+        for events in paginator.paginate(StackName=self.stack.name):
+            for e in events["StackEvents"]:
+                resource = self.ResourceEvent(e)
+                if resource.timestamp >= self.start_time and resource.event_id not in self.seen_events:
+                    self.resources[resource.logical_id] = resource
+                    self.seen_events.add(resource.event_id)
+                    if resource.status_reason:
+                        self.console.print(resource.timestamp.strftime("%H:%M:%S : ") + resource.logical_id + ": " + resource.status_reason)
 
     def wrap_waiter(self, waiter, callback):
         orig_func = waiter._operation_method

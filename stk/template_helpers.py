@@ -73,7 +73,7 @@ class TemplateHelpers:
 
     def lambda_uri(self, name: str) -> str:
         lambda_path = path.join("functions", name)
-        return self.bucket.upload(self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path))).as_http()
+        return self.bucket.upload(self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path))).as_s3()
 
     def ignore_list(self, p: str) -> Function:
         provider = self.provider
@@ -96,7 +96,9 @@ class TemplateHelpers:
 
         zip_content = BytesIO()
         with ZipFile(zip_content, mode="w", compression=ZIP_BZIP2) as zip:
+            print(f"Adding files from {dir}")
             for file_path, type, file_content in self.provider.find(dir, ignore):
+                print(f"Processing {file_path} ({type})")
                 file_path = path.join(prefix, file_path)
 
                 # Add file to zip
@@ -111,8 +113,10 @@ class TemplateHelpers:
                 # Record md5 checksum
                 checksums[path.join(dir, file_path)] = hashlib.md5(str(file_content).encode("utf-8")).hexdigest()
 
-        # final (composite) checksum is based on filenames and content md5s
-        md5sum = hashlib.md5(str(sorted(checksums)).encode("utf-8")).hexdigest()
+        # final (composite) checksum is based on filenames and content md5s. They are sorted so checksum doesn't
+        # vary if files are discovered in different orders.
+        sorted_checksums = sorted(checksums.items())
+        md5sum = hashlib.md5(str(sorted_checksums).encode("utf-8")).hexdigest()
 
         return ZipContent(dir, zip_content.getvalue(), md5sum)
 

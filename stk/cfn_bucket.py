@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import boto3
+import botocore
 
 from dataclasses import dataclass
 
@@ -42,6 +43,14 @@ class CfnBucket:
         self.s3 = boto3.client("s3", region_name=self.region)
 
     # Upload content object to S3 bucket
-    def upload(self, object: Uploadable):
-        self.s3.put_object(Bucket=self.bucket_name, Key=object.key(), Body=object.body(), ServerSideEncryption="AES256")
+    def upload(self, object: Uploadable, overwrite: bool = False):
+        s3 = self.s3
+        try:
+            s3.head_object(Bucket=self.bucket_name, Key=object.key())
+            print(f"Key {object.key()} already exists in {self.bucket_name}, not uploading")
+        except botocore.exceptions.ClientError as ex:
+            if ex.response["ResponseMetadata"]["HTTPStatusCode"] == 404:
+                s3.put_object(Bucket=self.bucket_name, Key=object.key(), Body=object.body(), ServerSideEncryption="AES256")
+            else:
+                raise
         return CfnBucketObject(self, object.key())

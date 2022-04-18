@@ -1,5 +1,6 @@
 from __future__ import annotations
 import hashlib
+from typing import List
 from cfn_tools import load_yaml
 from jinja2 import Environment, StrictUndefined
 
@@ -75,6 +76,9 @@ class RenderedTemplate(dict, Uploadable):
 
     def key(self) -> str:
         return "/".join(["templates", self.name, self.md5() + ".zip"])
+
+    def iam_capabilities(self) -> List[str]:
+        return self.get("Metadata", {}).get("iam_capabilities", [])
 
 
 class Template:

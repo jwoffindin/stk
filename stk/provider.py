@@ -43,7 +43,7 @@ class FilesystemProvider(GenericProvider):
             for f in files:
                 file_path = path.join(p, f)
                 if ignore and ignore(file_path):
-                    print(f"Skipping {file_path} due to ignore rule")
+                    # print(f"Skipping {file_path} due to ignore rule")
                     continue
 
                 # strip the directory prefix. E.g.

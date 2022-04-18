@@ -24,5 +24,5 @@ class TestStack(StackFixtures):
         res = stack.create_change_set(template=rendered_template, change_set_name="my-changeset-name")
         assert res["ExecutionStatus"] == "AVAILABLE"
 
-        execute_res = stack.execute_change_set("my-changeset-name")
+        execute_res = stack.execute_change_set(action="create", change_set_name="my-changeset-name")
         assert execute_res
