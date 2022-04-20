@@ -1,0 +1,14 @@
+---
+refs:
+  required_stack:
+    stack_name: "{{ environment }}-some-other-stack"
+  optional_stack:
+    required: false
+environments:
+  dev:
+    var1: "{{ refs.output('required_stack', 'some_output') }}"
+    var2: "{{ refs.output('optional_stack', 'another_output') }}"
+aws:
+  region: us-east-1
+  cfn_bucket: foo
+

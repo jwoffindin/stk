@@ -4,6 +4,7 @@ from os import path
 from pathlib import Path
 from yaml import safe_load
 
+
 class ConfigFiles(list):
     def fetch_dict(self, key, environment, defaults: dict = {}):
         ret_val = dict(defaults)
@@ -28,17 +29,18 @@ class ConfigFiles(list):
 
 
 class ConfigFile(dict):
-    EXPECTED_KEYS = ['aws', 'core', 'environments', 'helpers', 'include', 'params', 'template', 'vars']
+    EXPECTED_KEYS = ["aws", "core", "environments", "helpers", "include", "params", "refs", "template", "vars"]
 
     def __init__(self, filename: str, config_dir: str):
         self.filename = filename
         self.config_dir = config_dir
 
-        self['vars'] = {}
-        self['params'] = {}
-        self['include'] = []
-        self['helpers'] = []
-        self['environments'] = {}
+        self["vars"] = {}
+        self["params"] = {}
+        self["include"] = []
+        self["helpers"] = []
+        self["environments"] = {}
+        self["refs"] = {}
 
         config_path = path.join(config_dir, filename)
 
@@ -61,29 +63,29 @@ class ConfigFile(dict):
         special in that it defines which environments a stack can be deployed into - even if the
         included configs defined additional environments.
         """
-        return list(self['environments'].keys())
+        return list(self["environments"].keys())
 
     def environment(self, environment) -> dict:
         """
         Returns environment section from a config file. Returns empty dict if not defined, or None.
         """
-        return self['environments'].get(environment, None) or {}
+        return self["environments"].get(environment, None) or {}
 
     def includes(self):
         """
         Returns list of included files (relative to config dir). Files will be given .yml extension
         if they don't have an extension already
         """
-        includes = self['include']
+        includes = self["include"]
         if type(includes) != list:
-            raise Exception(f'{self.filename} invalid `include` directive. Expect a list, got a {type(includes)}')
+            raise Exception(f"{self.filename} invalid `include` directive. Expect a list, got a {type(includes)}")
 
         # Build a list of ['include/file-1.yml', 'include/file-2.yml]...
         include_paths = []
         for included in includes:
-            p = Path('includes', included)
+            p = Path("includes", included)
             if not p.suffix:
-                p = p.with_suffix('.yaml')
+                p = p.with_suffix(".yaml")
             include_paths.append(str(p))
         return include_paths
 

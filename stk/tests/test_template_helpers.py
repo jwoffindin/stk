@@ -61,7 +61,7 @@ class TestTemplateHelpers(StackFixtures):
         helpers = TemplateHelpers(provider, bucket=bucket, custom_helpers=[])
 
         uri = helpers.lambda_uri("a_function")
-        assert uri.startswith("s3://foo/functions/a_function/c1119dade74d1a8341ee3eb1207ded28.zip")
+        assert uri.startswith("s3://foo/functions/a_function/6fa3f1707cb555571039137d7970816f.zip")
 
         uri2 = helpers.lambda_uri("a_function")
         assert uri == uri2, "Generated URLs are deterministic"

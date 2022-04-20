@@ -11,9 +11,10 @@ from rich.console import Console
 from rich.prompt import Confirm
 
 from .stack_waiter import StackWaiter
-from .config import Config
 from .template import RenderedTemplate
-from .cfn_bucket import CfnBucket, Uploadable
+from .cfn_bucket import CfnBucket
+from .aws_config import AwsSettings
+from .basic_stack import BasicStack
 
 
 class StackException(Exception):
@@ -23,12 +24,10 @@ class StackException(Exception):
         self.response = response
 
 
-class Stack:
-    def __init__(self, aws: Config.AwsSettings, name: str):
-        self.aws = aws
-        self.name = name
+class Stack(BasicStack):
+    def __init__(self, aws: AwsSettings, name: str):
+        super().__init__(aws, name)
         self.bucket = CfnBucket(aws)
-        self.cfn = boto3.client("cloudformation", region_name=self.aws.region)
 
     def validate(self, template: RenderedTemplate):
         self.cfn.validate_template(TemplateURL=self.bucket.upload(template).as_s3())
@@ -113,20 +112,6 @@ class Stack:
         res = self.cfn.delete_stack(StackName=self.name)
         self.wait_for_stack("stack_delete_complete")
         print("Stack deleted")
-
-    def exists(self):
-        return self.status() != None
-
-    def status(self):
-        try:
-            stack = self.cfn.describe_stacks(StackName=self.name)["Stacks"][0]
-            assert self.name in [stack["StackId"], stack["StackName"]]
-            return stack["StackStatus"]
-        except ClientError as e:
-            err = e.response["Error"]
-            if (err["Code"] == "ValidationError") and ("does not exist" in err["Message"]):
-                return None
-            raise (e)
 
     def wait_for_stack(self, waiter_name, change_set=None):
         StackWaiter(self).wait_for_stack(waiter_name, change_set)

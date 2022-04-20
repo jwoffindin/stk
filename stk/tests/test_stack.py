@@ -15,7 +15,7 @@ class TestStack(StackFixtures):
         return RenderedTemplate(name="template.yaml", content=content_bytes)
 
     def test_stack_exception(self, stack):
-        ex = StackException(stack, "This is a test exception")
+        StackException(stack, "This is a test exception")
 
     def test_validate(self, stack, rendered_template):
         assert not stack.validate(rendered_template)

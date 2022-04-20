@@ -1,0 +1,8 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  ResourceA:
+    Type: Custom::Test
+    Parameters:
+      Var1: "{{ var1 }}"
+      Var2: "{{ var2 }}"

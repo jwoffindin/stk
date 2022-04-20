@@ -11,6 +11,8 @@ from yaml import safe_load
 from . import ConfigException
 from .config_file import ConfigFile
 from .template_source import TemplateSource
+from .basic_stack import BasicStack
+from .aws_config import AwsSettings
 
 
 class Config:
@@ -19,12 +21,6 @@ class Config:
         key: str
         value: str
         error: str
-
-    @dataclass
-    class AwsSettings:
-        region: str
-        cfn_bucket: str
-        account_id: str = None
 
     @dataclass
     class CoreSettings:
@@ -75,6 +71,7 @@ class Config:
 
                 for key in unexpanded_keys:
                     value = vars[key]
+                    print(f"Processing {key} - value = {value} <<{type(value)}>>")
                     try:
                         del errors[key]
                         if type(value) in [bool, dict, list, str]:
@@ -90,11 +87,14 @@ class Config:
             return errors
 
     class InterpolatedDict(dict):
-        def __init__(self, object, vars):
+        def __init__(self, object: dict, vars: dict):
             # Handle loading from empty YAML file (results in None), or a 'config group' (e.g. params)
             # not being present - which is okay.
             if not object:
                 return
+
+            if type(object) != dict:
+                raise Exception(object)
 
             env = Environment(undefined=StrictUndefined)
 
@@ -106,6 +106,43 @@ class Config:
                         self[k] = parsed_value
                 except Exception as ex:
                     raise (Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
+
+    class StackRefs:
+        DEFAULTS = {"stack_name": "{{ environment }}-{{ name }}", "required": True}
+
+        def __init__(self, stack_refs: dict, config: Config):
+            self.config = config
+            self.refs = stack_refs
+
+        def __contains__(self, name: str) -> bool:
+            return name in self.stacks()
+
+        def __getitem__(self, name: str) -> str:
+            return self.stack(name)
+
+        def output(self, name: str, output_name: str) -> str:
+            return self.stack(name).output(output_name)
+
+        def stack(self, name: str) -> BasicStack:
+            stacks = self.stacks()
+            if name not in self.stacks():
+                raise Exception(f"Attempt to access stack {name}, but it's not defined in config refs (only {', '.join(stacks.keys())} defined)")
+
+            return stacks[name]
+
+        def stacks(self) -> dict:
+            if not hasattr(self, "_stacks"):
+                self._stacks = dict()
+                for name, cfg in self.refs.items():
+                    if name == "environment":
+                        continue
+
+                    final_opts = Config.InterpolatedDict({**self.DEFAULTS, **cfg}, {**self.config.vars, "name": name.replace("_", "-")})
+                    stk = BasicStack(aws=self.config.aws, name=final_opts["stack_name"])
+                    if not stk.exists() and final_opts["required"]:
+                        raise Exception(f"Stack reference {name} - {stk.name} does not exist, but is required")
+                    self._stacks[name] = stk
+            return self._stacks
 
     def __init__(
         self,
@@ -136,10 +173,17 @@ class Config:
 
         includes = cfg.load_includes()
 
-        self.vars = self.Vars(includes.fetch_dict("vars", environment, {"name": name, "environment": environment}))
+        #
+        self.aws = AwsSettings(**includes.fetch_dict("aws", environment))
+
+        # Stack 'refs' object references external stacks. They are intended to be resolved by 'vars'/'params' so need to be
+        # loaded first
+        self.refs = self.StackRefs(includes.fetch_dict("refs", environment), self)
+
+        self.vars = self.Vars(includes.fetch_dict("vars", environment, {"name": name, "environment": environment, "refs": self.refs}))
         self.params = self.InterpolatedDict(includes.fetch_dict("params", environment), self.vars)
+
         self.helpers = list(includes.fetch_set("helpers", environment))
-        self.aws = self.AwsSettings(**includes.fetch_dict("aws", environment))
         self.core = self.CoreSettings(
             **self.InterpolatedDict(
                 includes.fetch_dict("core", environment, self.CoreSettings.DEFAULTS),

@@ -5,21 +5,25 @@ from pytest import fixture
 from pytest import fixture
 from moto import mock_s3, mock_cloudformation
 
+from ..aws_config import AwsSettings
 from ..config import Config, ConfigFile
 from ..stack import Stack
 
-class Fixtures():
+
+class Fixtures:
     def fixture_path(self, *dir):
         return path.join(path.dirname(__file__), "fixtures", *dir)
+
 
 class ConfigFixtures(Fixtures):
     @fixture
     def config(self, request):
-        return Config('main', environment="test", config_path=self.fixture_path('config', request.param))
+        return Config("main", environment="test", config_path=self.fixture_path("config", request.param))
 
     @fixture
     def config_file(self, request):
-        return ConfigFile('main.yaml', self.fixture_path('config', request.param))
+        return ConfigFile("main.yaml", self.fixture_path("config", request.param))
+
 
 class StackFixtures(Fixtures):
     @fixture
@@ -29,6 +33,7 @@ class StackFixtures(Fixtures):
         environ["AWS_SECRET_ACCESS_KEY"] = "testing"
         environ["AWS_SECURITY_TOKEN"] = "testing"
         environ["AWS_SESSION_TOKEN"] = "testing"
+        return AwsSettings(region="us-east-1", cfn_bucket="foo")
 
     @fixture
     def s3(self, aws):
@@ -49,6 +54,5 @@ class StackFixtures(Fixtures):
         yield bucket_name
 
     @fixture
-    def stack(self, cloudformation, s3):
-        aws_settings = Config.AwsSettings(region="us-east-1", cfn_bucket="foo")
-        yield Stack(aws=aws_settings, name="test-stack")
+    def stack(self, cloudformation, s3, aws):
+        yield Stack(aws=aws, name="test-stack")

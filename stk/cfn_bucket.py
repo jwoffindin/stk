@@ -5,7 +5,7 @@ import botocore
 
 from dataclasses import dataclass
 
-from .config import Config
+from .aws_config import AwsSettings
 
 
 class Uploadable:
@@ -36,7 +36,7 @@ class CfnBucketObject:
 
 
 class CfnBucket:
-    def __init__(self, config: Config.AwsSettings):
+    def __init__(self, config: AwsSettings):
         self.region = config.region
         self.bucket_name = config.cfn_bucket
 
