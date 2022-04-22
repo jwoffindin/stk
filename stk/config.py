@@ -71,7 +71,6 @@ class Config:
 
                 for key in unexpanded_keys:
                     value = vars[key]
-                    print(f"Processing {key} - value = {value} <<{type(value)}>>")
                     try:
                         del errors[key]
                         if type(value) in [bool, dict, list, str]:

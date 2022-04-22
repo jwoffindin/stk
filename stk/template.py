@@ -91,7 +91,7 @@ class Template:
         if type(name) != str:
             raise Exception(f"Invalid template name {name}")
 
-        self.name = name  # Make is useful when uploading to S3
+        self.name = name
         self.provider = provider
         self.helpers = helpers
 

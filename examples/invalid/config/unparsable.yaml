@@ -1,0 +1,7 @@
+environments:
+  dev:
+
+
+aws:
+  region: ap-southeast-2
+  cfn_bucket: teamdo-cfn-ap-southeast-2

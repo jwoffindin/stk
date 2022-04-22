@@ -3,3 +3,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Resources:
   ATopic:
     Type: AWS::SNS::Topic
+  ATopic2:
+    Type: AWS::SNS::Topic
+  # ATopic3:
+  #   Type: AWS::SNS::Topic
