@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import functools
 import click
+import botocore
 
+from dataclasses import dataclass
 from os import environ
 from pytest import fail
 from rich.console import Console
 from rich.table import Table
+from rich.prompt import Confirm
+from rich.padding import Padding
+from rich.panel import Panel
 
 from . import VERSION
 from .config import Config
@@ -17,10 +22,52 @@ from .template import TemplateWithConfig, Template
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
-# Add @common_stack_params decorator for commands that need stack/environment
+
+@dataclass
+class StackDelegatedCommand:
+    name: str
+    environment: str
+    config_path: str
+    template_path: str
+
+    def __post_init__(self):
+        self.config = Config(name=self.name, environment=self.environment, config_path=self.config_path, template_path=self.template_path)
+        self.stack = Stack(aws=self.config.aws, name=self.config.core.stack_name)
+        self.stack_name = self.stack.name
+
+    def __getattr__(self, name):
+        if hasattr(self.stack, name):
+            return getattr(self.stack, name)
+        return super().__getattr__(name)
+
+
+class TemplateCommand(StackDelegatedCommand):
+    def __post_init__(self):
+        super().__post_init__()
+        self.template = TemplateWithConfig(provider=self.config.template_source.provider(), config=self.config).render()
+
+        parse_error = self.template.error
+        if parse_error:
+            c.log(f":x: Template is NOT ok - {parse_error}", style="red")
+            exit(-1)
+
+    def validate(self):
+        template = self.template
+        if not template.error:
+            errors = self.stack.validate(template)
+            if errors:
+                c.log(f"{errors}\n\n", style="red")
+                c.log(":x: Template is NOT ok - failed validation", style="red")
+                exit(-1)
+            else:
+                c.log(":+1: Template is ok", style="green")
+
+
 def common_stack_params(func):
+    """Decorator for commands that need same stack/environment parameters"""
+
     @click.argument("name")
-    @click.argument("env")
+    @click.argument("environment")
     @click.option("--config-path", default=environ.get("CONFIG_PATH", "."), help="Path to config project")
     @click.option("--template-path", default=environ.get("TEMPLATE_PATH", "."), help="Path to templates")
     @functools.wraps(func)
@@ -33,126 +80,193 @@ def common_stack_params(func):
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version=VERSION)
 def stk():
-    pass
+    global c
+    c = Console()
 
 
 @stk.command()
 @common_stack_params
-def validate(name: str, env: str, config_path: str, template_path: str):
-    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
-    template = TemplateWithConfig(provider=config.template_source.provider(), config=config).render()
+def validate(**kwargs):
+    """Validate provided template"""
+    sc = TemplateCommand(**kwargs)
+    sc.validate()
 
-    if template.error:
-        print("---------------\n", template, "\n----------------\n")
-        print("Template is NOT ok - could not be parsed")
+
+@stk.command()
+@common_stack_params
+@click.option("--yes", is_flag=True, show_default=True, default=False, help="Automatically approve changeset")
+def create(yes: bool, **kwargs):
+    sc = TemplateCommand(**kwargs)
+    if sc.exists():
+        c.log(f"Stack {sc.stack_name} already exists", style="red")
         exit(-1)
 
-    stack = Stack(aws=config.aws, name=config.core.stack_name)
-    errors = stack.validate(template)
+    c.log("Creating stack", sc.stack_name, style="blue")
 
-    if errors:
-        print("Template is NOT ok - failed validation")
-        print(errors)
-        exit(-1)
+    with c.status("Validating template") as status:
+        errors = sc.validate(sc.template)
+        if errors:
+            c.log(f"{errors}\n\n", style="red")
+            c.log(":x: Template is NOT ok - failed validation", style="red")
+            c.log()
+            exit(-1)
+        else:
+            c.log("Template is ok")
+
+        status.update("Creating change set")
+        change_set = sc.create_change_set(sc.template)
+        c.log("Change set created")
+
+    c.print(change_set.summary())
+
+    if not change_set.available():
+        c.log(":x: Change set could not be generated", style="red")
+        exit(-2)
+
+    if yes or Confirm.ask(f"Create stack {sc.stack_name} ?"):
+        change_set.execute()
+        if sc.wait("stack_create_complete", change_set.resources()):
+            c.log("Stack created successfully", style="green")
+        else:
+            c.log("Stack create failed", style="red")
+            exit(-2)
     else:
-        print("Template is ok")
+        c.log("Cleaning up")
+        sc.delete()
 
 
 @stk.command()
 @common_stack_params
-def create(name: str, env: str, config_path: str, template_path: str):
-    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
-    template = TemplateWithConfig(provider=config.template_source.provider(), config=config).render(fail_on_error=True)
+@click.option("--yes", is_flag=True, show_default=True, default=False, help="Automatically approve changeset")
+def update(yes: bool, **kwargs):
+    sc = TemplateCommand(**kwargs)
 
-    stack_name = config.core.stack_name
+    if not sc.exists():
+        c.log(f"Stack {sc.name} does not exist")
+        exit(-1)
 
-    print("Creating stack", stack_name)
+    sc.validate()
 
-    stack = Stack(aws=config.aws, name=stack_name)
-    if stack.create(template):
-        print("Stack created successfully")
+    c.log("Diff:\n", sc.diff(sc.template))
 
+    with c.status("Generating change set"):
+        change_set = sc.create_change_set(sc.template)
 
-@stk.command()
-@common_stack_params
-def update(name: str, env: str, config_path: str, template_path: str):
-    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
-    template = TemplateWithConfig(provider=config.template_source.provider(), config=config).render(fail_on_error=True)
+    c.log("Change set:\n", change_set.summary())
 
-    stack_name = config.core.stack_name
+    if not change_set.available():
+        c.log(":x: Change set could not be generated", style="red")
+        exit(-2)
 
-    print("Updating stack", stack_name)
-
-    stack = Stack(aws=config.aws, name=stack_name)
-    if stack.update(template):
-        print("Stack updated successfully")
-
-
-@stk.command()
-@common_stack_params
-@click.argument("change_set_name")
-def create_change_set(name: str, env: str, config_path: str, template_path: str, change_set_name: str):
-    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
-    stack = Stack(aws=config.aws, name=config.core.stack_name)
-
-    template = TemplateWithConfig(provider=config.template_source.provider(), config=config).render(fail_on_error=True)
-    change_set = stack.create_change_set(template=template, change_set_name=change_set_name)
-
-    print(change_set)
-
-    print("Change set created successfully")
+    if yes or Confirm.ask(f"Update stack {sc.stack_name} ?"):
+        change_set.execute()
+        if sc.wait("stack_update_complete", change_set.resources()):
+            c.log("Stack updated successfully", style="green")
+        else:
+            c.log("Stack update failed", style="red")
+            exit(-2)
 
 
 @stk.command()
 @common_stack_params
 @click.argument("change_set_name")
-def execute_change_set(name: str, env: str, config_path: str, template_path: str, change_set_name: str):
-    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
-    stack = Stack(aws=config.aws, name=config.core.stack_name)
+def create_change_set(change_set_name: str, **kwargs):
+    sc = TemplateCommand(**kwargs)
 
-    res = stack.execute_change_set(change_set_name=change_set_name)
+    c.log(f"Creating change set {change_set_name} for {sc.stack_name}")
 
-    print(res)
+    # Fail fast
+    sc.validate()
+
+    if sc.exists():
+        # Only diff if the stack exists
+        c.log("Diff:\n", sc.diff(sc.template))
+
+    with c.status("Creating..."):
+        change_set = sc.create_change_set(template=sc.template, change_set_name=change_set_name)
+
+    c.print(Padding(change_set.summary(), (0, 10)))
+
+    c.log(":+1: Change set created")
 
 
 @stk.command()
 @common_stack_params
 @click.argument("change_set_name")
-def delete_change_set(name: str, env: str, config_path: str, template_path: str, change_set_name: str):
+def execute_change_set(change_set_name: str, **kwargs):
+    sc = StackDelegatedCommand(**kwargs)
+
+    c.log(f"Executing change set {change_set_name} for {sc.stack_name}")
+    try:
+        StackDelegatedCommand(**kwargs).execute_change_set(change_set_name=change_set_name)
+        c.log(":+1: Change set complete")
+    except sc.cfn.exceptions.ChangeSetNotFoundException as ex:
+        c.log(":x: Change set does not exist", style="red")
+
+
+@stk.command()
+@common_stack_params
+@click.argument("change_set_name")
+@click.option("--yes", is_flag=True, show_default=True, default=False, help="Automatically approve changeset")
+def delete_change_set(change_set_name: str, yes: bool, **kwargs):
     """
     Deletes named change set.
     """
-    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
-    stack = Stack(aws=config.aws, name=config.core.stack_name)
-
-    res = stack.delete_change_set(change_set_name=change_set_name)
-
-    print(res)
-
-
-@stk.command()
-@common_stack_params
-def delete(name: str, env: str, config_path: str, template_path: str):
-    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
-    stack = Stack(aws=config.aws, name=config.core.stack_name)
-
-    res = stack.delete()
-
-    print(res)
+    sc = StackDelegatedCommand(**kwargs)
+    c.log(f"Deleting change set {change_set_name} for {sc.stack_name}")
+    try:
+        sc.delete_change_set(change_set_name=change_set_name)
+        c.log("Change set deleted")
+    except sc.cfn.exceptions.ChangeSetNotFoundException as ex:
+        c.log(":x: Change set does not exist", style="red")
 
 
 @stk.command()
 @common_stack_params
-def show_template(name: str, env: str, config_path: str, template_path: str):
-    config = Config(name=name, environment=env, config_path=config_path, template_path=template_path)
+@click.option("--yes", is_flag=True, show_default=True, default=False, help="Automatically approve changeset")
+def delete(yes: bool, **kwargs):
+    sc = StackDelegatedCommand(**kwargs)
+    if not sc.exists():
+        c.log(f"Stack {sc.stack_name} does not exist", style="red")
+        exit(-1)
+
+    if not (yes or Confirm.ask(f"Delete stack {sc.stack_name} ?")):
+        c.log("Aborting")
+        exit(-2)
+    c.log(f"Destroying stack {sc.stack_name}")
+    sc.delete()
+    c.log("Stack deleted")
+
+
+@stk.command()
+@common_stack_params
+def show_template(name: str, environment: str, config_path: str, template_path: str):
+    config = Config(name=name, environment=environment, config_path=config_path, template_path=template_path)
     template = TemplateWithConfig(provider=config.template_source.provider(), config=config)
     print(template.render())
 
 
 @stk.command()
 @common_stack_params
-def show_config(name: str, env: str, config_path: str, template_path: str):
-    config = Config(name=name, environment=env, config_path=config_path)
+def diff(**kwargs):
+    sc = TemplateCommand(**kwargs)
+    if not sc.exists():
+        c.log(f"Stack {self.name} does not exist", style="red")
+        return
+
+    d = sc.diff(sc.template)
+    if d:
+        c.log("Generated diff")
+        c.print(d)
+        # c.log(d)
+    else:
+        c.log("There are no changes (templates are identical)")
+
+
+@stk.command()
+@common_stack_params
+def show_config(name: str, environment: str, config_path: str, template_path: str):
+    config = Config(name=name, environment=environment, config_path=config_path)
 
     template = config.template_source
     template_table = Table("Property", "Value", title="Template Source")

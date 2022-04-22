@@ -22,7 +22,7 @@ class TestStack(StackFixtures):
 
     def test_new_stack_create_change_set_valid(self, stack, rendered_template):
         res = stack.create_change_set(template=rendered_template, change_set_name="my-changeset-name")
-        assert res["ExecutionStatus"] == "AVAILABLE"
+        assert res.available()
 
-        execute_res = stack.execute_change_set(action="create", change_set_name="my-changeset-name")
+        execute_res = stack.execute_change_set(change_set_name="my-changeset-name")
         assert execute_res

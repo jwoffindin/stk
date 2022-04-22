@@ -98,7 +98,7 @@ class TemplateHelpers:
         with ZipFile(zip_content, mode="w", compression=ZIP_BZIP2) as zip:
             print(f"Adding files from {dir}")
             for file_path, type, file_content in self.provider.find(dir, ignore):
-                print(f"Processing {file_path} ({type})")
+                # print(f"Processing {file_path} ({type})")
                 file_path = path.join(prefix, file_path)
 
                 # Add file to zip
