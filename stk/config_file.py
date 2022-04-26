@@ -32,8 +32,8 @@ class ConfigFile(dict):
     EXPECTED_KEYS = ["aws", "core", "environments", "helpers", "includes", "params", "refs", "template", "vars"]
 
     def __init__(self, filename: str, config_dir: str):
-        self.filename = filename
         self.config_dir = config_dir
+        self.filename = str(self._find_config_file(Path(filename)))
 
         self["vars"] = {}
         self["params"] = {}
@@ -43,9 +43,7 @@ class ConfigFile(dict):
         self["refs"] = {}
         self["template"] = {}
 
-        config_path = path.join(config_dir, filename)
-
-        cfg = safe_load(open(config_path)) or dict()
+        cfg = safe_load(open(Path(config_dir, self.filename))) or dict()
 
         # hack 'template: [ name: 'template_name' } shortcut
         if "template" in cfg and type(cfg["template"]) == str:
@@ -89,9 +87,7 @@ class ConfigFile(dict):
         # Build a list of ['include/file-1.yml', 'include/file-2.yml]...
         include_paths = []
         for included in includes:
-            p = Path("includes", included)
-            if not p.suffix:
-                p = p.with_suffix(".yaml")
+            p = self._find_config_file(Path("includes", included))
             include_paths.append(str(p))
         return include_paths
 
@@ -118,3 +114,14 @@ class ConfigFile(dict):
         includes += [self]
 
         return includes
+
+    def _find_config_file(self, p: Path):
+        if p.suffix:
+            return p
+
+        for suffix in [".yaml", ".yml"]:
+            p = p.with_suffix(suffix)
+            if Path(self.config_dir, p).exists():
+                return p
+
+        raise FileNotFoundError(f"{p.with_suffix('')} does not exist (tried .yaml,.yml)")

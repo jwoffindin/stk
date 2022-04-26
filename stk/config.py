@@ -158,11 +158,7 @@ class Config:
         self.config_path = config_path
 
         try:
-            filename = Path(name)
-            if not filename.suffix:
-                filename = filename.with_suffix(".yaml")
-
-            cfg = ConfigFile(filename=filename, config_dir=self.config_path)
+            cfg = ConfigFile(filename=name, config_dir=self.config_path)
         except FileNotFoundError as err:
             print("Configuration file {cfg.filename} not found in {config.path}")
             raise
