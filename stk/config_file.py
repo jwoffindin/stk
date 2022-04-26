@@ -29,7 +29,7 @@ class ConfigFiles(list):
 
 
 class ConfigFile(dict):
-    EXPECTED_KEYS = ["aws", "core", "environments", "helpers", "include", "params", "refs", "template", "vars"]
+    EXPECTED_KEYS = ["aws", "core", "environments", "helpers", "includes", "params", "refs", "template", "vars"]
 
     def __init__(self, filename: str, config_dir: str):
         self.filename = filename
@@ -37,7 +37,7 @@ class ConfigFile(dict):
 
         self["vars"] = {}
         self["params"] = {}
-        self["include"] = []
+        self["includes"] = []
         self["helpers"] = []
         self["environments"] = {}
         self["refs"] = {}
@@ -76,9 +76,9 @@ class ConfigFile(dict):
         Returns list of included files (relative to config dir). Files will be given .yml extension
         if they don't have an extension already
         """
-        includes = self["include"]
+        includes = self["includes"]
         if type(includes) != list:
-            raise Exception(f"{self.filename} invalid `include` directive. Expect a list, got a {type(includes)}")
+            raise Exception(f"{self.filename} invalid `includes` directive. Expect a list, got a {type(includes)}")
 
         # Build a list of ['include/file-1.yml', 'include/file-2.yml]...
         include_paths = []

@@ -1,5 +1,5 @@
 ---
-include:
+includes:
   - second
   - third
 vars:

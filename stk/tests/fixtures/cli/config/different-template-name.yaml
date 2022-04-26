@@ -1,7 +1,7 @@
 # This config file shows how to specify the template by name, rather than using
 # default (same as config file name)
 ---
-include:
+includes:
   - common
 
 template:
