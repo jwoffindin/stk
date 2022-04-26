@@ -41,10 +41,16 @@ class ConfigFile(dict):
         self["helpers"] = []
         self["environments"] = {}
         self["refs"] = {}
+        self["template"] = {}
 
         config_path = path.join(config_dir, filename)
 
         cfg = safe_load(open(config_path)) or dict()
+
+        # hack 'template: [ name: 'template_name' } shortcut
+        if "template" in cfg and type(cfg["template"]) == str:
+            cfg["template"] = {"name": cfg["template"]}
+
         super().__init__(cfg)
         self._ensure_valid_keys()
 

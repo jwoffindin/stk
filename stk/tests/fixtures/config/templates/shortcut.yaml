@@ -1,0 +1,9 @@
+---
+includes:
+  - common
+
+# A shortcut if you only want to set the name
+template: b_template
+
+environments:
+  test:
