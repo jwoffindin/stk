@@ -107,7 +107,7 @@ class Config:
                     raise (Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
 
     class StackRefs:
-        DEFAULTS = {"stack_name": "{{ environment }}-{{ name }}", "required": True}
+        DEFAULTS = {"stack_name": "{{ environment }}-{{ name }}", "optional": False}
 
         def __init__(self, stack_refs: dict, config: Config):
             self.config = config
@@ -138,9 +138,10 @@ class Config:
 
                     final_opts = Config.InterpolatedDict({**self.DEFAULTS, **cfg}, {**self.config.vars, "name": name.replace("_", "-")})
                     stk = BasicStack(aws=self.config.aws, name=final_opts["stack_name"])
-                    if not stk.exists() and final_opts["required"]:
+                    if stk.exists() or final_opts["optional"]:
+                        self._stacks[name] = stk
+                    else:
                         raise Exception(f"Stack reference {name} - {stk.name} does not exist, but is required")
-                    self._stacks[name] = stk
             return self._stacks
 
     def __init__(

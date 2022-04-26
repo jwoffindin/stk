@@ -3,7 +3,7 @@ refs:
   required_stack:
     stack_name: "{{ environment }}-some-other-stack"
   optional_stack:
-    required: false
+    optional: true
 environments:
   dev:
     var1: "{{ refs.output('required_stack', 'some_output') }}"
