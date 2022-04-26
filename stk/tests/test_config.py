@@ -78,3 +78,14 @@ class TestEnvironmentalPrecdenceConfig(ConfigFixtures):
 
         assert source.name == "b_template"
         assert source.version == "main"
+
+
+@pytest.mark.parametrize("config", ["tags"], indirect=True)
+class TestTags(ConfigFixtures):
+    def test_inheritance(self, config):
+        tags = config.tags.to_list()
+
+        assert {"Key": "Environment", "Value": "test"} in tags
+        assert {"Key": "Product", "Value": "tags-test"} in tags
+        assert {"Key": "StackTopLevel", "Value": "some-application"} in tags
+        assert {"Key": "StackEnvSpecific", "Value": "True"} in tags

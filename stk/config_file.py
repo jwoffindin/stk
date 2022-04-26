@@ -29,7 +29,7 @@ class ConfigFiles(list):
 
 
 class ConfigFile(dict):
-    EXPECTED_KEYS = ["aws", "core", "environments", "helpers", "includes", "params", "refs", "template", "vars"]
+    EXPECTED_KEYS = ["aws", "core", "environments", "helpers", "includes", "params", "refs", "tags", "template", "vars"]
 
     def __init__(self, filename: str, config_dir: str):
         self.config_dir = config_dir
@@ -42,6 +42,7 @@ class ConfigFile(dict):
         self["environments"] = {}
         self["refs"] = {}
         self["template"] = {}
+        self["tags"] = {}
 
         cfg = safe_load(open(Path(config_dir, self.filename))) or dict()
 

@@ -62,6 +62,12 @@ class TemplateCommand(StackDelegatedCommand):
             else:
                 c.log(":+1: Template is ok", style="green")
 
+    def create_change_set(self, change_set_name=None) -> ChangeSet:
+        with c.status("Creating change set"):
+            tags = self.config.tags.to_list()
+            cs = self.stack.create_change_set(template=self.template, tags=tags, change_set_name=change_set_name)
+        return cs
+
 
 def common_stack_params(func):
     """Decorator for commands that need same stack/environment parameters"""
@@ -113,9 +119,8 @@ def create(yes: bool, **kwargs):
         else:
             c.log("Template is ok")
 
-        status.update("Creating change set")
-        change_set = sc.create_change_set(sc.template)
-        c.log("Change set created")
+    change_set = sc.create_change_set()
+    c.log("Change set created")
 
     c.print(change_set.summary())
 
@@ -149,8 +154,7 @@ def update(yes: bool, **kwargs):
 
     c.log("Diff:\n", sc.diff(sc.template))
 
-    with c.status("Generating change set"):
-        change_set = sc.create_change_set(sc.template)
+    change_set = sc.create_change_set()
 
     c.log("Change set:\n", change_set.summary())
 
@@ -182,8 +186,7 @@ def create_change_set(change_set_name: str, **kwargs):
         # Only diff if the stack exists
         c.log("Diff:\n", sc.diff(sc.template))
 
-    with c.status("Creating..."):
-        change_set = sc.create_change_set(template=sc.template, change_set_name=change_set_name)
+    change_set = sc.create_change_set(change_set_name=change_set_name)
 
     c.print(Padding(change_set.summary(), (0, 10)))
 

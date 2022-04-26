@@ -106,6 +106,13 @@ class Config:
                 except Exception as ex:
                     raise (Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
 
+    class Tags(InterpolatedDict):
+        def to_list(self):
+            ret_val = []
+            for k, v in self.items():
+                ret_val.append({"Key": str(k), "Value": str(v)})
+            return ret_val
+
     class StackRefs:
         DEFAULTS = {"stack_name": "{{ environment }}-{{ name }}", "optional": False}
 
@@ -178,6 +185,7 @@ class Config:
 
         self.vars = self.Vars(includes.fetch_dict("vars", environment, {"name": name, "environment": environment, "refs": self.refs}))
         self.params = self.InterpolatedDict(includes.fetch_dict("params", environment), self.vars)
+        self.tags = self.Tags(includes.fetch_dict("tags", environment), self.vars)
 
         self.helpers = list(includes.fetch_set("helpers", environment))
         self.core = self.CoreSettings(

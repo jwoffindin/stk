@@ -41,7 +41,7 @@ class Stack(BasicStack):
                 return ex
             raise
 
-    def create_change_set(self, template: RenderedTemplate, change_set_name: str = None) -> ChangeSet:
+    def create_change_set(self, template: RenderedTemplate, tags: List(str) = [], change_set_name: str = None) -> ChangeSet:
         """
         Creates a ChangeSet object for given template.
 
@@ -54,7 +54,7 @@ class Stack(BasicStack):
         status = self.status()
         change_set_type = "UPDATE" if status and status != "REVIEW_IN_PROGRESS" else "CREATE"
 
-        return ChangeSet(self, change_set_name).create(template, change_set_type)
+        return ChangeSet(self, change_set_name).create(template=template, change_set_type=change_set_type, tags=tags)
 
     def execute_change_set(self, change_set_name: str) -> bool:
         """

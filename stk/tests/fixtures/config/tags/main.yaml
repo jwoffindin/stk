@@ -1,0 +1,12 @@
+---
+includes:
+  - empty
+
+environments:
+  test:
+    tags:
+      StackEnvSpecific: "true"
+
+tags:
+  StackTopLevel: "some-application"
+

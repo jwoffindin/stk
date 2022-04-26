@@ -19,7 +19,7 @@ class ChangeSet:
         self.name = name
         self.cfn = stack.cfn
 
-    def create(self, template: RenderedTemplate, change_set_type: str):
+    def create(self, template: RenderedTemplate, change_set_type: str, tags: List(str)):
         stack = self.stack
         template_url = stack.bucket.upload(template).as_http()
         self.cfn.create_change_set(
@@ -28,6 +28,7 @@ class ChangeSet:
             ChangeSetName=self.name,
             ChangeSetType=change_set_type,
             Capabilities=template.iam_capabilities(),
+            Tags=tags,
         )
 
         try:
@@ -102,13 +103,16 @@ class ChangeSet:
         for change in change_details or []:
             try:
                 target = change["Target"]
-                target_name = "[b]%s.%s[/b]" % (target["Attribute"], target["Name"])
-                if change["ChangeSource"] == "DirectModification":
-                    ret_val.append(f"{target_name} changed")
-                elif change["ChangeSource"] == "ResourceAttribute":
-                    ret_val.append(f"{target_name} changed by {change['CausingEntity']}")
+                if "Name" in target:
+                    target_name = "[b]%s.%s[/b]" % (target["Attribute"], target["Name"])
+                    if change["ChangeSource"] == "DirectModification":
+                        ret_val.append(f"{target_name} changed")
+                    elif change["ChangeSource"] == "ResourceAttribute":
+                        ret_val.append(f"{target_name} changed by {change['CausingEntity']}")
+                    else:
+                        ret_val.append(str(change))
                 else:
-                    ret_val.append(str(change))
+                    ret_val.append("[b]%s[/b]" % (target["Attribute"]))
             except Exception as ex:
                 print(ex)
                 ret_val.append(str(change))
