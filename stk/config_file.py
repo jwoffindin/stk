@@ -27,6 +27,12 @@ class ConfigFiles(list):
 
         return ret_val
 
+    def validate(self, config):
+        valid_environments = config.core.environments
+        if valid_environments:
+            for include in self:
+                include.validate(valid_environments)
+
 
 class ConfigFile(dict):
     EXPECTED_KEYS = ["aws", "core", "environments", "helpers", "includes", "params", "refs", "tags", "template", "vars"]
@@ -49,6 +55,12 @@ class ConfigFile(dict):
         # hack 'template: [ name: 'template_name' } shortcut
         if "template" in cfg and type(cfg["template"]) == str:
             cfg["template"] = {"name": cfg["template"]}
+
+        # check that an environment matching one of the reserved keys isn't defined - highly
+        # likely that user has fat-fingered their config
+        reserved_env_errors = set(self.EXPECTED_KEYS) & set(self["environments"].keys())
+        if reserved_env_errors:
+            raise Exception(f"{self.filename} has defined environments {reserved_env_errors}; these are reserved")
 
         super().__init__(cfg)
         self._ensure_valid_keys()
@@ -91,6 +103,15 @@ class ConfigFile(dict):
             p = self._find_config_file(Path("includes", included))
             include_paths.append(str(p))
         return include_paths
+
+    def validate(self, valid_environments):
+        if "environments" in self:
+            defined_envs = set(self["environments"].keys())
+            invalid_envs = defined_envs - set(valid_environments)
+            if invalid_envs:
+                invalid_envs = ", ".join(invalid_envs)
+                valid_envs = ", ".join(valid_environments)
+                raise Exception(f"{self.filename} defines environments {invalid_envs}, which are not listed in core.environments ({valid_envs})")
 
     def load_includes(self) -> list:
         """

@@ -89,3 +89,18 @@ class TestTags(ConfigFixtures):
         assert {"Key": "Product", "Value": "tags-test"} in tags
         assert {"Key": "StackTopLevel", "Value": "some-application"} in tags
         assert {"Key": "StackEnvSpecific", "Value": "True"} in tags
+
+
+@pytest.mark.parametrize("config", ["core"], indirect=True)
+class TestEnvironmentalPrecdenceConfig(ConfigFixtures):
+    def test_stack_name(self, config):
+        assert config.core.stack_name == "forced-stack-name"
+
+    def test_define_valid_environments(self, config):
+        assert config.core.environments == ["dev", "test", "prod"]
+
+    def test_only_valid_environments_allowed(self, config):
+        with pytest.raises(Exception) as ex:
+            Config("invalid-env", environment="stage", config_path=self.fixture_path("config", "core"))
+
+        assert "invalid-env.yaml defines environments 'stage', which are is listed in core.environments (dev, test, prod)"

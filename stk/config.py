@@ -26,6 +26,7 @@ class Config:
     class CoreSettings:
         # Attributes
         stack_name: str
+        environments: list = None
 
         # DEFAULTS are pre-interpolation values so can't set them via attributes
         DEFAULTS = {"stack_name": "{{ environment }}-{{ name }}"}
@@ -194,6 +195,7 @@ class Config:
                 self.vars,
             )
         )
+
         self.template_source = TemplateSource(
             **self.InterpolatedDict(
                 includes.fetch_dict(
@@ -204,6 +206,9 @@ class Config:
                 self.vars,
             )
         )
+
+        # perform final linting/validation
+        includes.validate(self)
 
     def var(self, name):
         return self.vars.get(name)

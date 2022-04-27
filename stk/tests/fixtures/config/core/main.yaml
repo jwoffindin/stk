@@ -1,0 +1,14 @@
+---
+includes:
+  - common
+
+environments:
+  test:
+    core:
+      stack_name: forced-stack-name
+
+core:
+  environments:
+    - dev
+    - test
+    - prod
