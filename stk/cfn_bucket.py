@@ -37,10 +37,9 @@ class CfnBucketObject:
 
 class CfnBucket:
     def __init__(self, config: AwsSettings):
-        self.region = config.region
         self.bucket_name = config.cfn_bucket
-
-        self.s3 = boto3.client("s3", region_name=self.region)
+        self.region = config.region
+        self.s3 = config.client("s3")
 
     # Upload content object to S3 bucket
     def upload(self, object: Uploadable, overwrite: bool = False):

@@ -11,7 +11,7 @@ class BasicStack:
     def __init__(self, aws: AwsSettings, name: str):
         self.aws = aws
         self.name = name
-        self.cfn = boto3.client("cloudformation", region_name=self.aws.region)
+        self.cfn = aws.client("cloudformation")
         self.bucket = CfnBucket(aws)
 
     def exists(self):

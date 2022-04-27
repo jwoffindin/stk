@@ -190,7 +190,10 @@ def create_change_set(change_set_name: str, **kwargs):
 
     c.print(Padding(change_set.summary(), (0, 10)))
 
-    c.log(":+1: Change set created")
+    if change_set.available():
+        c.log(":+1: Change set created")
+    else:
+        c.log(":x: Change set was not successful")
 
 
 @stk.command()
