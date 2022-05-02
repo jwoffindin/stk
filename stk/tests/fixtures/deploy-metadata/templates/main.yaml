@@ -1,0 +1,13 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+  stack:
+    deployed_at: "{{ deploy.timestamp }}"
+    template_commit: "{{ deploy.template_sha }}"
+    template_ref: "{{ deploy.template_ref }}"
+    config_commit: "{{ deploy.config_sha }}"
+    config_ref: "{{ deploy.config_ref }}"
+Resources:
+  ResourceA:
+    Type: Custom::Test
+

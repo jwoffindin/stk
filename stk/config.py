@@ -81,10 +81,12 @@ class Config:
                     try:
                         del errors[key]
                         if type(value) in [bool, dict, list, str]:
+                            # print(f"expanding {key}, type={type(value)}")
                             tpl = env.from_string(str(value))  # convert value to jinja2 template
                             result = str(tpl.render(self))
                             self[key] = safe_load(result) or ""
                         else:
+                            # print(f"skipping {key}, type={type(value)}")
                             self[key] = value  # Don't try and process this value as Jinja template
                         del vars[key]
                     except Exception:
@@ -177,6 +179,14 @@ class Config:
 
             return self._stacks
 
+    @dataclass
+    class DeployMetadata:
+        timestamp: string = "?"
+        template_sha: str = "?"
+        template_ref: str = "?"
+        config_sha: str = "?"
+        config_ref: str = "?"
+
     def __init__(
         self,
         name: str,
@@ -209,7 +219,10 @@ class Config:
         # loaded first
         self.refs = self.StackRefs(includes.fetch_dict("refs", environment), self)
 
-        self.vars = self.Vars(includes.fetch_dict("vars", environment, {"name": name, "environment": environment, "refs": self.refs}))
+        # Deploy metadata is used to track deploys back to version controlled config/templates.
+        self.deploy = self.DeployMetadata()
+
+        self.vars = self.Vars(includes.fetch_dict("vars", environment, {"name": name, "environment": environment, "refs": self.refs, "deploy": self.deploy}))
         self.params = self.InterpolatedDict(includes.fetch_dict("params", environment), self.vars)
         self.tags = self.Tags(includes.fetch_dict("tags", environment), self.vars)
 

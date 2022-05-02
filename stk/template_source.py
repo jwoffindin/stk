@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from .provider import provider
 
+
 @dataclass
 class TemplateSource:
     name: str
