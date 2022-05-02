@@ -27,7 +27,7 @@ class FailedTemplate(dict):
         last_frame = traceback
         while traceback:
             filename = traceback.tb_frame.f_code.co_filename
-            if filename == "<template>":
+            if filename == "<template>" or filename == "<unknown>":
                 break
             last_frame = traceback
             traceback = traceback.tb_next
@@ -46,11 +46,14 @@ class FailedTemplate(dict):
         lines = self.source.split("\n")
 
         from_line = max(1, line_no - self.ERROR_CONTEXT_LINES)
-        to_line = min(len(lines), line_no + self.ERROR_CONTEXT_LINES) - 1
+        to_line = min(len(lines), line_no + self.ERROR_CONTEXT_LINES + 1)
 
         code = []
         for i in range(from_line, to_line):
-            code.append("%4d : %s" % (i, lines[i - 1]))
+            line = "%4d : %s" % (i, lines[i - 1])
+            if i == line_no:
+                line = f"[bold red]{line}[/bold red]"
+            code.append(line)
         return "\n".join(code)
 
 

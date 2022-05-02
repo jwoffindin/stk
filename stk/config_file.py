@@ -11,10 +11,16 @@ class ConfigFiles(list):
 
         for config_file in self:
             # Top-level key in file is lowest priority
-            ret_val.update(config_file.get(key, {}))
+            try:
+                ret_val.update(config_file.get(key, {}))
+            except TypeError as ex:
+                self.report_error(f"Unable to retrieve top-level key '{key}'", config_file, key, ex)
 
             # Environment-specific key is higher priority
-            ret_val.update(config_file.environment(environment).get(key, {}))
+            try:
+                ret_val.update(config_file.environment(environment).get(key, {}))
+            except TypeError as ex:
+                self.report_error(f"Unable to retrieve {key} from environments.{environment}", config_file, key, ex)
 
         return ret_val
 
@@ -32,6 +38,10 @@ class ConfigFiles(list):
         if valid_environments:
             for include in self:
                 include.validate(valid_environments)
+
+    def report_error(self, msg: str, config_file: ConfigFile, key: str, err: Exception):
+        print(msg + f" while processing {config_file.filename}: {err}")
+        exit(-1)
 
 
 class ConfigFile(dict):

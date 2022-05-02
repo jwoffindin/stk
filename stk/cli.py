@@ -249,7 +249,7 @@ def delete(yes: bool, **kwargs):
 def show_template(name: str, environment: str, config_path: str, template_path: str):
     config = Config(name=name, environment=environment, config_path=config_path, template_path=template_path)
     template = TemplateWithConfig(provider=config.template_source.provider(), config=config)
-    print(template.render())
+    c.print(str(template.render()))
 
 
 @stk.command()

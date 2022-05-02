@@ -5,13 +5,15 @@ import re
 from dataclasses import dataclass
 from jinja2 import Environment, StrictUndefined
 from pathlib import Path
+from rich.console import Console
+from rich.table import Table
 from sys import exc_info
 from yaml import safe_load
 
 from . import ConfigException
 from .config_file import ConfigFile
 from .template_source import TemplateSource
-from .basic_stack import BasicStack
+from .basic_stack import StackReference
 from .aws_config import AwsSettings
 
 
@@ -32,7 +34,7 @@ class Config:
         DEFAULTS = {"stack_name": "{{ environment }}-{{ name }}"}
 
         # stack name
-        valid_stack_name = re.compile("^(i?)[a-z0-9-]+$").match
+        valid_stack_name = re.compile("^[a-zA-Z0-9-]+$").match
 
         def __post_init__(self):
             if type(self.stack_name) != str or not self.valid_stack_name(self.stack_name):
@@ -51,7 +53,11 @@ class Config:
             failed_keys = self.expand(vars)
 
             if failed_keys:
-                raise Exception(f"An error occurred: {failed_keys}")
+                errors = Table("Key", "Value", "Error")
+                for k, v in failed_keys.items():
+                    errors.add_row(k, str(v.value), str(v.error))
+                Console().log(errors)
+                raise Exception(f"An error occurred processing vars: {failed_keys}")
 
         def expand(self, vars: dict):
             """
@@ -128,28 +134,47 @@ class Config:
             return self.stack(name)
 
         def output(self, name: str, output_name: str) -> str:
-            return self.stack(name).output(output_name)
+            stack = self.stack(name)
+            if stack:
+                return stack.output(output_name)
 
-        def stack(self, name: str) -> BasicStack:
+        def stack(self, name: str) -> StackReference:
+            """
+            Returns stack object, or None if stack is optional but is not found
+            """
+            stack_names = sorted(self.refs.keys())
+            if name not in stack_names:
+                raise Exception(f"Attempt to access stack {name}, but it's not defined in config.refs - only {', '.join(stack_names)} are defined")
+
             stacks = self.stacks()
-            if name not in self.stacks():
-                raise Exception(f"Attempt to access stack {name}, but it's not defined in config refs (only {', '.join(stacks.keys())} defined)")
-
-            return stacks[name]
+            stack = stacks.get(name)
+            if stack.exists():
+                return stack
 
         def stacks(self) -> dict:
             if not hasattr(self, "_stacks"):
-                self._stacks = dict()
-                for name, cfg in self.refs.items():
-                    if name == "environment":
-                        continue
+                try:
+                    self._stacks = dict()
+                    for name, cfg in self.refs.items():
+                        if name == "environment":
+                            continue
 
-                    final_opts = Config.InterpolatedDict({**self.DEFAULTS, **cfg}, {**self.config.vars, "name": name.replace("_", "-")})
-                    stk = BasicStack(aws=self.config.aws, name=final_opts["stack_name"])
+                        if not cfg:
+                            cfg = {}
+
+                        final_opts = Config.InterpolatedDict({**self.DEFAULTS, **cfg}, {"environment": self.config.environment, "name": name.replace("_", "-")})
+                        self._stacks[name] = StackReference(aws=self.config.aws, name=final_opts["stack_name"])
+                except Exception as ex:
+                    print(ex)
+                    raise
+
+                # Check that required stacks exists
+                for name, stk in self._stacks.items():
                     if stk.exists() or final_opts["optional"]:
-                        self._stacks[name] = stk
+                        pass
                     else:
                         raise Exception(f"Stack reference {name} - {stk.name} does not exist, but is required")
+
             return self._stacks
 
     def __init__(
@@ -206,6 +231,10 @@ class Config:
                 self.vars,
             )
         )
+
+        # Ugly hack. Need to come up with something better after I've had a coffee
+        if "stack_name" not in self.vars:
+            self.vars["stack_name"] = self.core.stack_name
 
         # perform final linting/validation
         includes.validate(self)

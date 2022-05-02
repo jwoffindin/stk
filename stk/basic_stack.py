@@ -64,3 +64,10 @@ class BasicStack:
         for output in stack["Outputs"]:
             ret_val[output["OutputKey"]] = output["OutputValue"]
         return ret_val
+
+
+class StackReference(BasicStack):
+    def status(self):
+        if not hasattr(self, "_status"):
+            self._status = super().status()
+        return self._status
