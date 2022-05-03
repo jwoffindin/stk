@@ -3,7 +3,7 @@ import boto3
 from os import path, environ
 from pytest import fixture
 from pytest import fixture
-from moto import mock_s3, mock_cloudformation
+from moto import mock_s3, mock_cloudformation, mock_sts
 
 from ..aws_config import AwsSettings
 from ..config import Config, ConfigFile
@@ -36,13 +36,19 @@ class StackFixtures(Fixtures):
         return AwsSettings(region="us-east-1", cfn_bucket="foo")
 
     @fixture
-    def s3(self, aws):
+    def sts(self, aws):
+        with mock_sts():
+            conn = boto3.client("sts", region_name="us-east-1")
+            yield conn
+
+    @fixture
+    def s3(self, aws, sts):
         with mock_s3():
             conn = boto3.client("s3", region_name="us-east-1")
             yield conn
 
     @fixture
-    def cloudformation(self, aws):
+    def cloudformation(self, aws, sts):
         with mock_cloudformation():
             conn = boto3.client("cloudformation", region_name="us-east-1")
             yield conn

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-
+from time import sleep
 from botocore.exceptions import ClientError
 
 from rich import box
@@ -49,7 +49,7 @@ class StackWaiter:
         waiter = self.wrap_waiter(waiter, waiter_callback)
         waiter.wait(WaiterConfig={"Delay": 5}, StackName=self.stack.name, ChangeSetName=change_set.name)
 
-    def wait_for_stack(self, waiter_name, resources: dict = None, **kwargs):
+    def wait_for_stack(self, waiter_name, resources: dict = None):
         """
         Wait for stack change to complete
 
@@ -84,7 +84,7 @@ class StackWaiter:
                         self.console.log(response["Error"]["Message"])
 
                 waiter = self.wrap_waiter(waiter, waiter_callback)
-                waiter.wait(WaiterConfig={"Delay": 2}, **kwargs)
+                waiter.wait(WaiterConfig={"Delay": 2}, StackName=self.stack.name)
 
                 # Perform a final update so the status table reflects end state
                 live.update(self.refresh_table())

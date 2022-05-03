@@ -30,7 +30,7 @@ class TestStackRefs(ConfigFixtures, StackFixtures):
 
     def test_config_parses(self, required_stack, config):
         v = config.refs
-        assert not v.stack("optional_stack").exists()
+        assert not v.stack("optional_stack")
         assert v.stack("required_stack").exists()
 
         # Pending - moto doesn't seem to do outputs

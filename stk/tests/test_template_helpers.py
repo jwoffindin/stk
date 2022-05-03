@@ -34,17 +34,17 @@ class TestTemplateHelpers(StackFixtures):
 
     @fixture
     def basic_helpers(self, provider: GenericProvider, config: Config, env) -> TemplateHelpers:
-        return TemplateHelpers(provider=provider, bucket=None, custom_helpers=[])
+        return TemplateHelpers(provider=provider, bucket=None, custom_helpers=[], aws=config.aws)
 
     def test_custom_helpers_loaded_from_provider(self, provider: GenericProvider, config: Config, env):
-        helpers = TemplateHelpers(provider=provider, bucket=None, custom_helpers=["a_custom_helper"])
+        helpers = TemplateHelpers(provider=provider, bucket=None, custom_helpers=["a_custom_helper"], aws=config.aws)
 
         helpers.inject(env)
 
         assert "a_custom_helper" in env.globals
         assert env.globals["a_custom_helper"](41) == 42
 
-    def test_custom_helpers_available_in_template(self, provider: GenericProvider, config: Config, env):
+    def test_custom_helpers_available_in_template(self, sts, provider: GenericProvider, config: Config, env):
         template = TemplateWithConfig(provider=provider, config=config)
 
         rendered = template.render()
@@ -58,7 +58,7 @@ class TestTemplateHelpers(StackFixtures):
 
     def test_lambda_uri(self, cfn_bucket, provider, config):
         bucket = CfnBucket(config.aws)
-        helpers = TemplateHelpers(provider, bucket=bucket, custom_helpers=[])
+        helpers = TemplateHelpers(provider, bucket=bucket, custom_helpers=[], aws=config.aws)
 
         uri = helpers.lambda_uri("a_function")
         assert uri.startswith("s3://foo/functions/a_function/6fa3f1707cb555571039137d7970816f.zip")
@@ -67,7 +67,7 @@ class TestTemplateHelpers(StackFixtures):
         assert uri == uri2, "Generated URLs are deterministic"
 
     def test_package_ignore(self, provider):
-        helpers = TemplateHelpers(provider, bucket=None, custom_helpers=[])
+        helpers = TemplateHelpers(provider, bucket=None, custom_helpers=[], aws=None)
 
         # The template directory has some .package-ignore files that should be loaded
         ignore = helpers.ignore_list("functions/a_function")

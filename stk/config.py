@@ -246,8 +246,8 @@ class Config:
         )
 
         # Ugly hack. Need to come up with something better after I've had a coffee
-        if "stack_name" not in self.vars:
-            self.vars["stack_name"] = self.core.stack_name
+        self.vars["stack_name"] = self.core.stack_name
+        self.vars["account_id"] = self.aws.account_id
 
         # perform final linting/validation
         includes.validate(self)

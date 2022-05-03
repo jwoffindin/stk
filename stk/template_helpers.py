@@ -33,9 +33,10 @@ class ZipContent(Uploadable):
 
 
 class TemplateHelpers:
-    def __init__(self, provider, bucket: CfnBucket, custom_helpers: list):
+    def __init__(self, provider, bucket: CfnBucket, custom_helpers: list, aws: AwsConfig):
         self.provider = provider
         self.bucket = bucket
+        self.aws = aws
         self.custom_helpers = {}
 
         for name in custom_helpers:
