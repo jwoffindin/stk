@@ -5,6 +5,9 @@ from __future__ import annotations
 import functools
 import click
 import botocore
+import boto3
+import json
+import yaml
 
 from dataclasses import dataclass
 from os import environ
@@ -89,6 +92,12 @@ def stk():
     global c
     c = Console()
 
+    log_level = environ.get("LOG_LEVEL", None)
+    if log_level:
+        boto3.set_stream_logger("boto3", level=log_level)
+        boto3.set_stream_logger("botocore", level=log_level)
+        boto3.set_stream_logger("boto3.resources", level=log_level)
+
 
 @stk.command()
 @common_stack_params
@@ -110,14 +119,7 @@ def create(yes: bool, **kwargs):
     c.log("Creating stack", sc.stack_name, style="blue")
 
     with c.status("Validating template") as status:
-        errors = sc.validate(sc.template)
-        if errors:
-            c.log(f"{errors}\n\n", style="red")
-            c.log(":x: Template is NOT ok - failed validation", style="red")
-            c.log()
-            exit(-1)
-        else:
-            c.log("Template is ok")
+        sc.validate()
 
     change_set = sc.create_change_set()
     c.log("Change set created")
@@ -246,10 +248,27 @@ def delete(yes: bool, **kwargs):
 
 @stk.command()
 @common_stack_params
-def show_template(name: str, environment: str, config_path: str, template_path: str):
+@click.option("--format", default="yaml", help="Force conversion of resulting template (json or yaml)")
+@click.option("--output-file", default="", help="Write resulting template to file")
+def show_template(name: str, environment: str, config_path: str, template_path: str, format: str, output_file: str):
     config = Config(name=name, environment=environment, config_path=config_path, template_path=template_path)
     template = TemplateWithConfig(provider=config.template_source.provider(), config=config)
-    c.print(str(template.render()))
+
+    result = str(template.render())
+
+    if format == "yaml":
+        pass
+    elif format == "json":
+        result = json.dumps(yaml.safe_load(result), indent=4, sort_keys=True)
+    else:
+        raise Exception("Unknown output format")
+
+    if output_file:
+        fh = open(output_file, "w")
+        fh.write(result)
+        fh.close()
+    else:
+        c.print(result)
 
 
 @stk.command()
