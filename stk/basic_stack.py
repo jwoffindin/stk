@@ -55,14 +55,24 @@ class BasicStack:
     #         self.describe_stack()  # side-effect is to set ID - if stack exists
     #     return self._id
 
+    class Output(str):
+        def __new__(cls, value: str, description: str):
+            obj = str.__new__(cls, value)
+            obj.description = description
+            return obj
+
     def __get_outputs(self) -> dict:
         stack = self.describe_stack()
         if not stack:
             return None
 
+        if "Outputs" not in stack:
+            return None
+
         ret_val = {}
         for output in stack["Outputs"]:
-            ret_val[output["OutputKey"]] = output["OutputValue"]
+            ret_val[output["OutputKey"]] = self.Output(output["OutputValue"], output["Description"])
+
         return ret_val
 
 

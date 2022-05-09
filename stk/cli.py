@@ -43,6 +43,16 @@ class StackDelegatedCommand:
             return getattr(self.stack, name)
         return super().__getattr__(name)
 
+    def show_outputs(self):
+        outputs = self.outputs()
+        if outputs:
+            t = Table("Key", "Value", "Description", title="Stack Outputs", title_justify="left", title_style="bold")
+            for key, value in outputs.items():
+                t.add_row(key, value, value.description)
+            c.print(t)
+        else:
+            c.print(f"Stack {self.stack_name} does not have any outputs")
+
 
 class TemplateCommand(StackDelegatedCommand):
     def __post_init__(self):
@@ -134,6 +144,7 @@ def create(yes: bool, **kwargs):
         change_set.execute()
         if sc.wait("stack_create_complete", change_set.resources()):
             c.log("Stack created successfully", style="green")
+            sc.show_outputs()
         else:
             c.log("Stack create failed", style="red")
             exit(-2)
@@ -286,6 +297,18 @@ def diff(**kwargs):
         # c.log(d)
     else:
         c.log("There are no changes (templates are identical)")
+
+
+@stk.command()
+@common_stack_params
+def outputs(**kwargs):
+    sc = StackDelegatedCommand(**kwargs)
+
+    if not sc.exists():
+        c.log(f"Stack {self.name} does not exist", style="red")
+        return
+
+    sc.show_outputs()
 
 
 @stk.command()
