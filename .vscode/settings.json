@@ -3,6 +3,7 @@
         "astimezone",
         "boto",
         "botocore",
+        "chdir",
         "IFLNK",
         "isatty",
         "ISLNK",

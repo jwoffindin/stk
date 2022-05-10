@@ -2,35 +2,45 @@ from __future__ import annotations
 
 import os
 import stat
+import giturlparse
+import urllib
 
 from dataclasses import dataclass
+from git import Repo
 from os import path, walk
 from pathlib import Path
 
 
 class GenericProvider:
-    pass
+    def template(self) -> bytes:
+        tpl_path = Path(self.name)
+        if not tpl_path.suffix:
+            tpl_path = tpl_path.with_suffix(".yaml")
+        return self.content(tpl_path)
+
+    def content(self, _: str):
+        pass
+
+    def is_file(self, *_):
+        pass
+
+    def find(self, dir: str, ignore: function):
+        pass
 
 
 @dataclass
 class FilesystemProvider(GenericProvider):
     name: str
-    root: str  # TODO rename to root
+    root: str
 
     def __post_init__(self):
         if not Path(self.root).is_dir:
             raise Exception(f"{self.root} does not appear to be a directory")
 
-    def template(self):
-        tpl_path = Path(self.root, self.name)
-        if not tpl_path.suffix:
-            tpl_path = tpl_path.with_suffix(".yaml")
-        return open(tpl_path, "rb").read()  # TODO change to 'r'
-
-    def content(self, file_path):
+    def content(self, file_path: str) -> bytes:
         return open(path.join(self.root, file_path), "rb").read()
 
-    def is_file(self, *p):
+    def is_file(self, *p) -> bool:
         return path.isfile(path.join(self.root, *p))
 
     def find(self, dir, ignore=None):
@@ -59,15 +69,81 @@ class FilesystemProvider(GenericProvider):
                 else:
                     raise Exception("Unsupported filesystem object at " + file_path)
 
-    def cached_path(self, *path) -> str:
-        return Path(self.root, *path)
-
     def __str__(self) -> str:
         return self.name
 
 
+@dataclass
+class GitProvider(GenericProvider):
+    name: str
+    git_url: str  # TODO rename to root
+    git_ref: str
+    root: str = ""
+
+    #
+    repo: Repo = None
+
+    def __post_init__(self):
+        if self.root.endswith("/"):
+            self.root = self.root[:-1]
+
+        # print(f"GitProvider(name={self.name}, url={self.git_url}, root={self.root})")
+
+        if self.git_url.startswith(".") or self.git_url.startswith("/"):
+            # Local repository (e.g. ../templates)
+            self.repo = Repo(self.git_url)
+        elif "file" in url.protocols:
+            # Local repository file://home/users/foo/templates etc)
+            url = urllib.parse.urlparse(self.git_url)
+            print(f"Loading from {url.path}")
+            self.repo = Repo(url.path)
+        else:
+            # Remote repository
+            url = giturlparse.parse(self.git_url)
+            cache_dir = ".template-cache"
+            os.mkdir(cache_dir)
+            self.repo = Repo.clone_from(self.git_url, path.join(cache_dir, self.name))
+
+        self.commit = self.repo.commit(self.git_ref)
+
+    def content(self, *p):
+        file_path = path.join(self.root, *p)
+        try:
+            return self.commit.tree[file_path].data_stream.read()
+        except KeyError:
+            raise (Exception(f"Git object {path.join(self.git_url, file_path)}@{self.git_ref}: does not exist"))
+
+    def is_file(self, *p):
+        file_path = path.join(self.root, *p)
+        try:
+            obj = self.commit.tree[file_path]
+            if obj.type == "blob":
+                return True
+            return False
+        except KeyError:
+            return False
+
+    def find(self, dir, ignore=None):
+        if dir.endswith("/"):
+            dir = dir[:-1]
+
+        tree_path = path.join(self.root, dir)
+        tree = self.commit.tree[tree_path]
+        for item in tree.traverse():
+            item_path = item.path[len(tree_path) + 1 :]
+            if ignore and ignore(item_path):
+                continue
+
+            if item.type == "blob":
+                if item.mode & item.link_mode == item.link_mode:
+                    type = "symlink"
+                else:
+                    type = "file"
+                yield (item_path, type, item.data_stream.read())
+
+
 def provider(source):
-    repo = source.repo
-    if repo.startswith("/") or repo.startswith("."):
-        return FilesystemProvider(root=repo, name=source.name)
-    raise Exception("Unsupported template source")
+    if source.version:
+        return GitProvider(name=source.name, git_url=source.repo, root=source.root, git_ref=source.version)
+    else:
+        return FilesystemProvider(name=source.name, root=source.root)

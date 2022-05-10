@@ -1,9 +1,13 @@
 from __future__ import annotations
+import contextlib
 from dataclasses import dataclass
 
 import hashlib
+import os
 from pyclbr import Function
 import re
+import shutil
+import tempfile
 import time
 
 from importlib import util as importutil
@@ -32,6 +36,18 @@ class ZipContent(Uploadable):
         return "/".join([self.name, self.md5sum + ".zip"])
 
 
+@contextlib.contextmanager
+def in_tmp_directory():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        saved_dir = os.getcwd()
+        os.chdir(temp_dir)
+        yield
+    finally:
+        os.chdir(saved_dir)
+        shutil.rmtree(temp_dir)
+
+
 class TemplateHelpers:
     def __init__(self, provider, bucket: CfnBucket, custom_helpers: list, aws: AwsConfig):
         self.provider = provider
@@ -39,8 +55,10 @@ class TemplateHelpers:
         self.aws = aws
         self.custom_helpers = {}
 
-        for name in custom_helpers:
-            self.custom_helpers[name] = self._load_custom_helper(name)
+        with in_tmp_directory():
+            os.mkdir("helpers")
+            for name in custom_helpers:
+                self.custom_helpers[name] = self._load_custom_helper(name)
 
     def inject(self, env: Environment):
         """
@@ -128,18 +146,20 @@ class TemplateHelpers:
         mod_name = f"stk.template_helpers.config.{name}"
 
         mod_file = str(Path("helpers", name).with_suffix(".py"))
-        mod_path = self.provider.cached_path(mod_file)
 
-        spec = importutil.spec_from_file_location(mod_name, mod_path)
+        content = self.provider.content(mod_file)
+        open(mod_file, "wb").write(content)
+
+        spec = importutil.spec_from_file_location(mod_name, mod_file)
 
         if spec is None:
-            raise ImportError(f"Could not load spec for module '{mod_name}' at: {mod_file} ({mod_path})")
+            raise ImportError(f"Could not load spec for module '{mod_name}' at: {mod_file}")
 
         module = importutil.module_from_spec(spec)
         try:
             spec.loader.exec_module(module)
         except FileNotFoundError as e:
-            raise ImportError(f"{e.strerror}: {mod_path}") from e
+            raise ImportError(f"{e.strerror}: {mod_file}") from e
 
         helper_func = getattr(module, "helper")
 

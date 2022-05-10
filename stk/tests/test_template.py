@@ -10,7 +10,7 @@ class TestTemplate(Fixtures):
     @fixture
     def provider(self, request):
         p = self.fixture_path("templates", "simple")
-        source = TemplateSource(name=request.param, version=None, repo=p)
+        source = TemplateSource(name=request.param, root=p)
         return provider(source)
 
     @mark.parametrize("provider", ["main.yaml"], indirect=True)

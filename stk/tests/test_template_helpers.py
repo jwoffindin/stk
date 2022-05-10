@@ -27,7 +27,7 @@ class TestTemplateHelpers(StackFixtures):
     @fixture
     def provider(self):
         p = self.fixture_path("custom_helpers", "templates")
-        return TemplateSource(name="main.yaml", version=None, repo=p).provider()
+        return TemplateSource(name="main.yaml", root=p).provider()
 
     def test_custom_helpers_in_config(self, config):
         assert set(config.helpers) == set(["a_custom_helper", "this_one_should_appear_only_once", "another_custom_helper"])

@@ -14,7 +14,7 @@ class TestStackRefs(ConfigFixtures):
 
     @fixture
     def provider(self, request):
-        source = TemplateSource(name="main", version=None, repo=self.fixture_path("deploy-metadata", "templates"))
+        source = TemplateSource(name="main", root=self.fixture_path("deploy-metadata", "templates"))
         return provider(source)
 
     def test_basic_info(self, provider, config):

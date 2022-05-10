@@ -234,16 +234,15 @@ class Config:
             )
         )
 
-        self.template_source = TemplateSource(
-            **self.InterpolatedDict(
-                includes.fetch_dict(
-                    "template",
-                    environment,
-                    {"name": name, "version": "main", "repo": template_path},
-                ),
-                self.vars,
-            )
+        template_source = self.InterpolatedDict(
+            includes.fetch_dict(
+                "template",
+                environment,
+                {"name": name, "version": "", "root": template_path},
+            ),
+            self.vars,
         )
+        self.template_source = TemplateSource(**template_source)
 
         # Ugly hack. Need to come up with something better after I've had a coffee
         self.vars["stack_name"] = self.core.stack_name
