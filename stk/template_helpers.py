@@ -74,6 +74,7 @@ class TemplateHelpers:
         # Core helpers
         g["resourcify"] = self.resourcify
         g["lambda_uri"] = self.lambda_uri
+        g["user_data"] = self.user_data
 
         # Custom helpers (defined in templates/helpers and specified in config via 'helpers' stanza)
         for name, func in self.custom_helpers.items():
