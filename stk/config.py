@@ -116,10 +116,10 @@ class Config:
                     raise (Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
 
     class Tags(InterpolatedDict):
-        def to_list(self):
+        def to_list(self, extra_attributes={}):
             ret_val = []
             for k, v in self.items():
-                ret_val.append({"Key": str(k), "Value": str(v)})
+                ret_val.append({"Key": str(k), "Value": str(v), **extra_attributes})
             return ret_val
 
     class StackRefs:
@@ -238,7 +238,7 @@ class Config:
             includes.fetch_dict(
                 "template",
                 environment,
-                {"name": name, "version": "", "root": template_path},
+                {"name": name, "root": template_path},
             ),
             self.vars,
         )

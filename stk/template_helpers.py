@@ -22,6 +22,7 @@ from .cfn_bucket import CfnBucket, Uploadable
 from .ignore_file import parse_ignore_list
 from .multipart_encoder import multipart_encode
 from .aws_config import AwsSettings
+from .config import Config
 
 
 @dataclass
@@ -50,11 +51,14 @@ def in_tmp_directory():
 
 
 class TemplateHelpers:
-    def __init__(self, provider, bucket: CfnBucket, custom_helpers: list, aws: AwsSettings):
+    def __init__(self, provider, bucket: CfnBucket, custom_helpers: list, config: Config):
         self.provider = provider
         self.bucket = bucket
-        self.aws = aws
+        self.config = config
         self.custom_helpers = {}
+
+        # These are "short-cuts" for use by custom helpers
+        self.aws = config.aws
 
         with in_tmp_directory():
             os.mkdir("helpers")
@@ -74,6 +78,8 @@ class TemplateHelpers:
         g["resourcify"] = self.resourcify
         g["lambda_uri"] = self.lambda_uri
         g["user_data"] = self.user_data
+        g["include_file"] = self.include_file
+        g["tags"] = self.tags
 
         # Custom helpers (defined in templates/helpers and specified in config via 'helpers' stanza)
         for name, func in self.custom_helpers.items():
@@ -154,6 +160,21 @@ class TemplateHelpers:
         # Rendering user data as correctly indented content is hard, so
         # don't even bother - just dump out single-line JSON !
         return json.dumps({"Fn::Base64": {"Fn::Join": ["", lines]}})
+
+    def tags(self, extra_attributes={}, **tags):
+        final_tags = Config.Tags({**self.config.tags, **tags}, {})
+        return final_tags.to_list(extra_attributes=extra_attributes)
+
+    def include_file(self, include_file_name, padding=8, prefix="\n", **vars) -> str:
+        env = Environment(undefined=jinja2.StrictUndefined)
+
+        content = self.provider.content(path.join("files", include_file_name))
+        template = env.from_string(source=str(content, "utf-8"))
+        result = template.render(vars)
+
+        indended = "\n".join(map(lambda line: " " * padding + line, result.splitlines())) + "\n"
+
+        return prefix + indended
 
     def zip_tree(self, dir: str, ignore=None, prefix="") -> ZipContent:
         """

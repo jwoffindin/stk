@@ -21,7 +21,7 @@ class TemplateSource:
     root: str
     """path to file - either local, or relative to git root if using repo"""
 
-    version: str = ""
+    version: str = None
     """if set, template is stored in git repository (either local or remote)"""
 
     repo: str = None

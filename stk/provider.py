@@ -98,17 +98,27 @@ class GitProvider(GenericProvider):
         if self.git_url.startswith(".") or self.git_url.startswith("/"):
             # Local repository (e.g. ../templates)
             self.repo = Repo(self.git_url)
-        elif "file" in url.protocols:
-            # Local repository file://home/users/foo/templates etc)
-            url = urllib.parse.urlparse(self.git_url)
-            print(f"Loading from {url.path}")
-            self.repo = Repo(url.path)
         else:
-            # Remote repository
-            url = giturlparse.parse(self.git_url)
-            cache_dir = ".template-cache"
-            os.mkdir(cache_dir)
-            self.repo = Repo.clone_from(self.git_url, path.join(cache_dir, self.name))
+            url = urllib.parse.urlparse(self.git_url)
+            print(url)
+            if url.scheme == "file":  # "file" in url.protocols:
+                # Local repository file://home/users/foo/templates etc)
+                print(f"Loading from {url.path}")
+                self.repo = Repo(url.path)
+            else:
+                # Remote repository
+                url = giturlparse.parse(self.git_url)
+                cache_dir = ".template-cache"
+                target_dir = path.join(cache_dir, self.name)
+                if path.exists(target_dir):
+                    self.repo = Repo(target_dir)
+                    for remote in self.repo.remotes:
+                        print(remote)
+                        remote.fetch()
+                else:
+                    if not path.exists(cache_dir):
+                        os.mkdir(cache_dir)
+                    self.repo = Repo.clone_from(self.git_url, target_dir)
 
         self.commit = self.repo.commit(self.git_ref)
 
@@ -159,7 +169,8 @@ class GitProvider(GenericProvider):
 
 
 def provider(source):
-    if source.version:
+    # TODO: why is version a string 'None' rather than just None?
+    if source.version and source.version != "None":
         return GitProvider(name=source.name, git_url=source.repo, root=source.root, git_ref=source.version)
     else:
         return FilesystemProvider(name=source.name, root=source.root)

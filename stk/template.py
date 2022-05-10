@@ -123,7 +123,7 @@ class TemplateWithConfig(Template):
     def __init__(self, provider: GenericProvider, config: Config):
         self.vars = config.vars
 
-        helpers = TemplateHelpers(provider=provider, bucket=CfnBucket(config=config.aws), custom_helpers=config.helpers, aws=config.aws)
+        helpers = TemplateHelpers(provider=provider, bucket=CfnBucket(config=config.aws), custom_helpers=config.helpers, config=config)
 
         super().__init__(name=config.template_source.name, provider=provider, helpers=helpers)
 
