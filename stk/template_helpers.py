@@ -52,7 +52,6 @@ def in_tmp_directory():
 class TemplateHelpers:
     def __init__(self, provider, bucket: CfnBucket, custom_helpers: list, aws: AwsSettings):
         self.provider = provider
-        self.vars = {}  # TODO
         self.bucket = bucket
         self.aws = aws
         self.custom_helpers = {}
@@ -110,7 +109,7 @@ class TemplateHelpers:
         # Parse final list
         return parse_ignore_list(ignore_content)
 
-    def user_data(self, name: str) -> str:
+    def user_data(self, name: str, **vars) -> str:
         """
         Given a named user_data/<name> directory, generates UserData content
         """
@@ -131,7 +130,7 @@ class TemplateHelpers:
 
             # Userdata files are actually Jinja2 templates in disguise
             template = env.from_string(source=str(content, "utf-8"))
-            parts[part_name] = template.render(self.vars)
+            parts[part_name] = template.render(vars)
 
         encoded = multipart_encode(sorted(parts.items()))
 
