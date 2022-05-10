@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 from pytest import fixture
 
 
@@ -49,8 +50,6 @@ class TestTemplateHelpers(StackFixtures):
 
         rendered = template.render()
 
-        print(rendered)
-
         assert type(rendered) == RenderedTemplate
 
         assert rendered["foo_should_be_42"] == "42"
@@ -65,6 +64,18 @@ class TestTemplateHelpers(StackFixtures):
 
         uri2 = helpers.lambda_uri("a_function")
         assert uri == uri2, "Generated URLs are deterministic"
+
+    def test_user_data(self, provider, config):
+        helpers = TemplateHelpers(provider, bucket=None, custom_helpers=[], aws=None)
+
+        parsed = json.loads(helpers.user_data("test1"))
+
+        assert "Fn::Base64" in parsed.keys()
+
+        lines = parsed["Fn::Base64"]["Fn::Join"][1]
+        assert "#!/bin/bash\n" in lines
+        assert 'Content-Type: text/x-shellscript; charset="utf-8"\n' in lines
+        assert {"Ref": "SomeResource"} in lines
 
     def test_package_ignore(self, provider):
         helpers = TemplateHelpers(provider, bucket=None, custom_helpers=[], aws=None)

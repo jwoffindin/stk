@@ -18,10 +18,13 @@ class GenericProvider:
             tpl_path = tpl_path.with_suffix(".yaml")
         return self.content(tpl_path)
 
-    def content(self, _: str):
+    def content(self, _: str) -> bytes:
         pass
 
-    def is_file(self, *_):
+    def is_file(self, *_) -> bool:
+        pass
+
+    def is_dir(self, *_) -> bool:
         pass
 
     def find(self, dir: str, ignore: function):
@@ -42,6 +45,9 @@ class FilesystemProvider(GenericProvider):
 
     def is_file(self, *p) -> bool:
         return path.isfile(path.join(self.root, *p))
+
+    def is_tree(self, *p) -> bool:
+        return path.isdir(path.join(self.root, *p))
 
     def find(self, dir, ignore=None):
         start_dir = path.abspath(path.join(self.root, dir))
@@ -106,18 +112,28 @@ class GitProvider(GenericProvider):
 
         self.commit = self.repo.commit(self.git_ref)
 
-    def content(self, *p):
+    def content(self, *p) -> bytes:
         file_path = path.join(self.root, *p)
         try:
             return self.commit.tree[file_path].data_stream.read()
         except KeyError:
             raise (Exception(f"Git object {path.join(self.git_url, file_path)}@{self.git_ref}: does not exist"))
 
-    def is_file(self, *p):
+    def is_file(self, *p) -> bool:
         file_path = path.join(self.root, *p)
         try:
             obj = self.commit.tree[file_path]
             if obj.type == "blob":
+                return True
+            return False
+        except KeyError:
+            return False
+
+    def is_tree(self, *p) -> bool:
+        dir_path = path.join(self.root, *p)
+        try:
+            obj = self.commit.tree[dir_path]
+            if obj.type == "tree":
                 return True
             return False
         except KeyError:

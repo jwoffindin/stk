@@ -1,26 +1,27 @@
 from __future__ import annotations
-import contextlib
-from dataclasses import dataclass
 
+import contextlib
 import hashlib
+import jinja2
+import json
 import os
-from pyclbr import Function
 import re
 import shutil
 import tempfile
 import time
 
+from dataclasses import dataclass
 from importlib import util as importutil
 from io import BytesIO
-from typing import Tuple
 from jinja2 import Environment
 from os import path
 from pathlib import Path
-from stat import S_IFLNK
 from zipfile import ZipFile, ZipInfo, ZIP_BZIP2
 
 from .cfn_bucket import CfnBucket, Uploadable
 from .ignore_file import parse_ignore_list
+from .multipart_encoder import multipart_encode
+from .aws_config import AwsSettings
 
 
 @dataclass
@@ -49,8 +50,9 @@ def in_tmp_directory():
 
 
 class TemplateHelpers:
-    def __init__(self, provider, bucket: CfnBucket, custom_helpers: list, aws: AwsConfig):
+    def __init__(self, provider, bucket: CfnBucket, custom_helpers: list, aws: AwsSettings):
         self.provider = provider
+        self.vars = {}  # TODO
         self.bucket = bucket
         self.aws = aws
         self.custom_helpers = {}
@@ -94,7 +96,7 @@ class TemplateHelpers:
         lambda_path = path.join("functions", name)
         return self.bucket.upload(self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path))).as_s3()
 
-    def ignore_list(self, p: str) -> Function:
+    def ignore_list(self, p: str):
         provider = self.provider
 
         # Ignore files in $TEMPLATE_ROOT/$type/$name or $TEMPLATE_ROOT/$type
@@ -106,6 +108,52 @@ class TemplateHelpers:
 
         # Parse final list
         return parse_ignore_list(ignore_content)
+
+    def user_data(self, name: str) -> str:
+        """
+        Given a named user_data/<name> directory, generates UserData content
+        """
+        dir = path.join("user_data", name.lower())
+        if not self.provider.is_tree(dir):
+            raise (Exception(f"{dir} is not a directory"))
+
+        # Jinja2 evaluation requires any referenced variables be defined
+        # to avoid hard-to-detect failures.
+        env = jinja2.Environment(undefined=jinja2.StrictUndefined)
+
+        # Build dict of { name => content } that we can encode
+        #
+        parts = {}
+        for part_name, type, content in self.provider.find(dir):
+            if type != "file":
+                raise Exception("user_data(): %s is not a regular file" % part_name)
+
+            # Userdata files are actually Jinja2 templates in disguise
+            template = env.from_string(source=str(content, "utf-8"))
+            parts[part_name] = template.render(self.vars)
+
+        encoded = multipart_encode(sorted(parts.items()))
+
+        # Map encoded multi-line string to a JSON array.
+        #
+        # To allow resource references within user data, json fragments
+        # can be embedded within << >> delimeters.
+        #
+        # for example: "hello <<{"Ref": "bar"}>> there <<{}>>" will be mapped
+        # to a json array ["hello ", {"Ref": "bar"}, " there ", {}]
+        #
+        lines = []
+        for line in encoded.splitlines(keepends=True):
+            parts = re.split("<<(.+?)>>(?!>)", line)
+            for i, match in enumerate(parts):
+                if i % 2:
+                    lines.append(json.loads(match))
+                else:
+                    lines.append(match)
+
+        # Rendering user data as correctly indented content is hard, so
+        # don't even bother - just dump out single-line JSON !
+        return json.dumps({"Fn::Base64": {"Fn::Join": ["", lines]}})
 
     def zip_tree(self, dir: str, ignore=None, prefix="") -> ZipContent:
         """
