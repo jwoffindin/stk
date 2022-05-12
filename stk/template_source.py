@@ -18,7 +18,7 @@ class TemplateSource:
     name: str
     """name of root template (without .yaml/.yml extension)"""
 
-    root: str
+    root: str = None
     """path to file - either local, or relative to git root if using repo"""
 
     version: str = None

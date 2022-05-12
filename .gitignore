@@ -5,3 +5,4 @@ __pycache__
 *.tmp
 .testmondata
 .template-cache
+*.log

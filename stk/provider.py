@@ -10,6 +10,12 @@ from git import Repo
 from os import path, walk
 from pathlib import Path
 
+import logging
+
+logging.basicConfig(filename="stk.log", filemode="w", level=os.environ.get("LOG_LEVEL", "INFO"))
+
+log = logging.getLogger("template provider")
+
 
 class GenericProvider:
     def template(self) -> bytes:
@@ -93,17 +99,16 @@ class GitProvider(GenericProvider):
         if self.root.endswith("/"):
             self.root = self.root[:-1]
 
-        # print(f"GitProvider(name={self.name}, url={self.git_url}, root={self.root})")
+        logging.debug(f"GitProvider(name={self.name}, url={self.git_url}, root={self.root})")
 
         if self.git_url.startswith(".") or self.git_url.startswith("/"):
             # Local repository (e.g. ../templates)
             self.repo = Repo(self.git_url)
         else:
             url = urllib.parse.urlparse(self.git_url)
-            print(url)
+            log.debug(url)
             if url.scheme == "file":  # "file" in url.protocols:
-                # Local repository file://home/users/foo/templates etc)
-                print(f"Loading from {url.path}")
+                log.info(f"Local git repository at {url.path}")
                 self.repo = Repo(url.path)
             else:
                 # Remote repository
@@ -111,16 +116,19 @@ class GitProvider(GenericProvider):
                 cache_dir = ".template-cache"
                 target_dir = path.join(cache_dir, self.name)
                 if path.exists(target_dir):
+                    log.info(f"using existing cached version {target_dir}")
                     self.repo = Repo(target_dir)
-                    for remote in self.repo.remotes:
-                        print(remote)
-                        remote.fetch()
+                    log.info(f"updating remote 'origin'")
+                    self.repo.remotes["origin"].pull()
                 else:
+                    log.info(f"don't have a cached copy of {self.name} in {cache_dir}")
                     if not path.exists(cache_dir):
                         os.mkdir(cache_dir)
+                    log.info(f"cloning from {self.git_url} -> {target_dir}")
                     self.repo = Repo.clone_from(self.git_url, target_dir)
-
+        log.info(f"getting commit {self.git_ref} from {self.repo}")
         self.commit = self.repo.commit(self.git_ref)
+        log.info("done")
 
     def content(self, *p) -> bytes:
         file_path = path.join(self.root, *p)

@@ -1,5 +1,4 @@
 from __future__ import annotations
-import boto3
 
 from botocore.exceptions import ClientError
 
@@ -28,6 +27,7 @@ class BasicStack:
         return self.__outputs
 
     def output(self, key) -> str:
+        # print(f"Getting output {key} from {self.name}")
         outputs = self.outputs()
         if outputs:
             if key in outputs:
@@ -37,8 +37,6 @@ class BasicStack:
     def describe_stack(self):
         try:
             stack = self.cfn.describe_stacks(StackName=self.name)["Stacks"][0]
-            # self._id = stack["StackId"]
-
             assert self.name in [stack["StackId"], stack["StackName"]]
             return stack
         except ClientError as e:
@@ -46,14 +44,6 @@ class BasicStack:
             if (err["Code"] == "ValidationError") and ("does not exist" in err["Message"]):
                 return None
             raise (e)
-
-    # def identifier(self):
-    #     """
-    #     Return stack ARN
-    #     """
-    #     if not hasattr(self, "_id"):
-    #         self.describe_stack()  # side-effect is to set ID - if stack exists
-    #     return self._id
 
     class Output(str):
         def __new__(cls, value: str, description: str):
@@ -72,7 +62,6 @@ class BasicStack:
         ret_val = {}
         for output in stack["Outputs"]:
             ret_val[output["OutputKey"]] = self.Output(output["OutputValue"], output["Description"])
-
         return ret_val
 
 

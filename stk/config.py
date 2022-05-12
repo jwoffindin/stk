@@ -1,6 +1,8 @@
 from __future__ import annotations
+import pathlib
 
 import re
+import os
 
 from dataclasses import dataclass
 from jinja2 import Environment, StrictUndefined
@@ -139,6 +141,8 @@ class Config:
             stack = self.stack(name)
             if stack:
                 return stack.output(output_name)
+            else:
+                raise Exception(f"Stack {name} does not exist")
 
         def stack(self, name: str) -> StackReference:
             """
@@ -203,8 +207,7 @@ class Config:
         try:
             cfg = ConfigFile(filename=name, config_dir=self.config_path)
         except FileNotFoundError as err:
-            print("Configuration file {cfg.filename} not found in {config.path}")
-            raise
+            raise Exception(f"Configuration file {name} not found in {config_path}: {err}")
 
         # Validate specified environment is defined in the top-level config file
         if environment not in cfg.environments():
@@ -212,17 +215,34 @@ class Config:
 
         includes = cfg.load_includes()
 
-        #
-        self.aws = AwsSettings(**includes.fetch_dict("aws", environment))
+        try:
+            aws_settings = self.InterpolatedDict(includes.fetch_dict("aws", environment), {"environment": environment})
+            self.aws = AwsSettings(**aws_settings)
+        except TypeError as ex:
+            raise Exception(f"Unable to parse aws settings: have {aws_settings}: {ex}")
 
         # Stack 'refs' object references external stacks. They are intended to be resolved by 'vars'/'params' so need to be
         # loaded first
-        self.refs = self.StackRefs(includes.fetch_dict("refs", environment), self)
+        try:
+            refs = self.InterpolatedDict(includes.fetch_dict("refs", environment), {"environment": environment})
+            self.refs = self.StackRefs(refs, self)
+        except Exception as ex:
+            raise Exception("Unable to parse stack refs (refs:). have {refs}: {ex}")
 
         # Deploy metadata is used to track deploys back to version controlled config/templates.
         self.deploy = self.DeployMetadata()
 
-        self.vars = self.Vars(includes.fetch_dict("vars", environment, {"name": name, "environment": environment, "refs": self.refs, "deploy": self.deploy}))
+        default_vars = {
+            "name": name,
+            "environment": environment,
+            "deploy": self.deploy,
+            "refs": self.refs,
+            "environ": os.environ,
+            "aws_cfn_bucket": self.aws.cfn_bucket,
+            "__config_dir": pathlib.Path(config_path),
+        }
+        self.vars = self.Vars(includes.fetch_dict("vars", environment, default_vars))
+
         self.params = self.InterpolatedDict(includes.fetch_dict("params", environment), self.vars)
         self.tags = self.Tags(includes.fetch_dict("tags", environment), self.vars)
 

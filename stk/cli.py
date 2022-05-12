@@ -141,10 +141,12 @@ def create(yes: bool, **kwargs):
         exit(-2)
 
     if yes or Confirm.ask(f"Create stack {sc.stack_name} ?"):
+        c.log(f"Applying change set")
         change_set.execute()
         if sc.wait("stack_create_complete", change_set.resources()):
             c.log("Stack created successfully", style="green")
-            sc.show_outputs()
+            if sc.outputs():
+                sc.show_outputs()
         else:
             c.log("Stack create failed", style="red")
             exit(-2)
@@ -176,9 +178,13 @@ def update(yes: bool, **kwargs):
         exit(-2)
 
     if yes or Confirm.ask(f"Update stack {sc.stack_name} ?"):
+        c.log(f"Applying change set")
+
         change_set.execute()
         if sc.wait("stack_update_complete", change_set.resources()):
             c.log("Stack updated successfully", style="green")
+            if sc.outputs():
+                sc.show_outputs()
         else:
             c.log("Stack update failed", style="red")
             exit(-2)
@@ -218,7 +224,9 @@ def execute_change_set(change_set_name: str, **kwargs):
     c.log(f"Executing change set {change_set_name} for {sc.stack_name}")
     try:
         StackDelegatedCommand(**kwargs).execute_change_set(change_set_name=change_set_name)
-        c.log(":+1: Change set complete")
+        c.log(":+1: Change set complete", style="green")
+        if sc.outputs():
+            sc.show_outputs()
     except sc.cfn.exceptions.ChangeSetNotFoundException as ex:
         c.log(":x: Change set does not exist", style="red")
 
@@ -265,7 +273,13 @@ def show_template(name: str, environment: str, config_path: str, template_path: 
     config = Config(name=name, environment=environment, config_path=config_path, template_path=template_path)
     template = TemplateWithConfig(provider=config.template_source.provider(), config=config)
 
-    result = str(template.render())
+    result = template.render()
+    if result.error:
+        c.log(f":x: Template is NOT ok - {result.error}", style="red")
+        c.print(str(result))
+        exit(-1)
+
+    result = str(result)
 
     if format == "yaml":
         pass
@@ -287,7 +301,7 @@ def show_template(name: str, environment: str, config_path: str, template_path: 
 def diff(**kwargs):
     sc = TemplateCommand(**kwargs)
     if not sc.exists():
-        c.log(f"Stack {self.name} does not exist", style="red")
+        c.log(f"Stack {sc.name} does not exist", style="red")
         return
 
     d = sc.diff(sc.template)
@@ -304,8 +318,10 @@ def diff(**kwargs):
 def outputs(**kwargs):
     sc = StackDelegatedCommand(**kwargs)
 
+    c.log(f"Retrieving outputs for {sc.name}")
+
     if not sc.exists():
-        c.log(f"Stack {self.name} does not exist", style="red")
+        c.log(f"Stack {sc.name} does not exist", style="red")
         return
 
     sc.show_outputs()

@@ -115,7 +115,7 @@ class TemplateHelpers:
         # Parse final list
         return parse_ignore_list(ignore_content)
 
-    def user_data(self, name: str, **vars) -> str:
+    def user_data(self, name: str, **extra_vars) -> str:
         """
         Given a named user_data/<name> directory, generates UserData content
         """
@@ -127,8 +127,14 @@ class TemplateHelpers:
         # to avoid hard-to-detect failures.
         env = jinja2.Environment(undefined=jinja2.StrictUndefined)
 
-        # Build dict of { name => content } that we can encode
+        # context for template evalation is 'config.vars' plus any additional
+        # parameters passed. E.g.
         #
+        #     user_data(name='foo', param1='bar', param2='buzz')
+        #
+        template_context = {**self.config.vars, **extra_vars}
+
+        # Build dict of { name => content } that we can encode
         parts = {}
         for part_name, type, content in self.provider.find(dir):
             if type != "file":
@@ -136,7 +142,7 @@ class TemplateHelpers:
 
             # Userdata files are actually Jinja2 templates in disguise
             template = env.from_string(source=str(content, "utf-8"))
-            parts[part_name] = template.render(vars)
+            parts[part_name] = template.render(template_context)
 
         encoded = multipart_encode(sorted(parts.items()))
 
@@ -165,12 +171,15 @@ class TemplateHelpers:
         final_tags = Config.Tags({**self.config.tags, **tags}, {})
         return final_tags.to_list(extra_attributes=extra_attributes)
 
-    def include_file(self, include_file_name, padding=8, prefix="\n", **vars) -> str:
+    def include_file(self, include_file_name, padding=8, prefix="\n", **extra_vars) -> str:
         env = Environment(undefined=jinja2.StrictUndefined)
 
         content = self.provider.content(path.join("files", include_file_name))
         template = env.from_string(source=str(content, "utf-8"))
-        result = template.render(vars)
+
+        # context for evalation is 'config.vars' plus any additional parameters passed via
+        # :extra_vars:
+        result = template.render({**self.config.vars, **extra_vars})
 
         indended = "\n".join(map(lambda line: " " * padding + line, result.splitlines())) + "\n"
 
