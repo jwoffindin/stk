@@ -18,9 +18,8 @@
 <h3 align="center">STK - Opinionated CloudFormation Deployments</h3>
 
   <p align="center">
-    A "better" (opinionated) approach to managing AWS infrastructure with CloudFormation.
+    A "better" (well, opinionated at least) approach to managing AWS infrastructure with CloudFormation.</p>
 </div>
-
 
 
 <!-- TABLE OF CONTENTS -->
@@ -56,15 +55,206 @@
 
 STK provides an opinionated framework for managing AWS infrastructure with CloudFormation.
 
-It steals some ideas from Ansible, so some of the concepts and technologies may be familiar if you
-use it.
+The two key benefits of using `stk` for CloudFormation management.
+
+* Decouple CloudFormation templates from configuration. This simplifies multi-environment and allows you to build up a
+  library of reusable components.
+* Reduce risk from updates. Use of Jinja2 for templates and use of "variables" over "parameters" (more later) mean
+  you can see exactly what is going to change.
+
+
+## Getting started
+
+Quick start:
+
+    pip install https://github.com/jwoffindin/stk.git
+    stk-init my-project sns
+    cd my-project
+    stk create sns dev
+
+
+
+### Concepts
+
+### Configuration file
+
+A configuration file is simply a YAML file used to that declares:
+
+* How we deploy a CloudFormation template into an AWS account.
+* Any configuration required for the template.
+
+A minimal template may look like:
+
+```yaml
+# $CONFIG_PATH/foo.yml
+aws:
+  region: ap-southeast-2
+  cfn_bucket: my-bucket-for-cloudformation-deployments
+
+environments:
+  dev:
+  test:
+  prod:
+```
+
+This configuration file will allow us to deploy dev, test and prod instances of a CloudFormation template
+`foo.yaml` into the `ap-southeast-2 `region.
+
+```sh
+# Will create a stack called foo-dev in ap-southeast-2 using default profile and/or environment
+# credentials.
+$ stk create foo dev
+
+# Create and apply a change set to the 'foo-test' stack in ap-southeast-2 region.
+$ stk update foo test
+```
+
+### CloudFormation Templates
+
+The CloudFormation templates are YAML (JSON may work, I've not tried it)
+
+The templates are processed using `Jinja2` and any variables declared in `vars:` section of a config file are available.
+
+For example:
+
+```yaml
+# $CONFIG_PATH/foo.yml
+...
+vars:
+  greeting: Hello World!
+...
+```
+
+the corresponding template may look like:
+
+```yaml
+# $TEMPLATE_PATH/foo.yaml
+Description: |
+  I'd like to say {{ greeting }}, to you all
+```
+
+To avoid confusion between YAML comments and Jinja2 block level operations, we use a `##` for Jinja2. For example, if we want to allow `greeting` to be optional:
+
+```yaml
+# $TEMPLATE_PATH/foo.yaml
+
+## if greeting is defined
+Description: |
+  I'd like to say {{ greeting }}, to you all
+## endif
+
+```
+
+
+## Configuration
+
+### Structure
+
+The top-level keys that can be declared in a configuration files are:
+
+```yaml
+# Include other configuration. Allows composition and sharing of common configuration
+# Two common use cases — (1) environment specific configuration, and (2) deploying multiple stacks
+# from the same template
+includes:
+
+# Where to find the CloudFormation template. Supports local files, local git repositories
+# or remote git repositories.
+template:
+
+# AWS Parameters that are passed into a stack. Minimize if possible, use `vars` instead.
+# Good use cases include:
+# * passing secrets
+# * (that's about it?)
+params:
+
+# Jinja2 variables/values passed to the template. Preferred way to manage configuration - e.g.
+# use template conditions rather than 'native' AWS Template Conditions - they are unwieldy and
+# can make changes hard to reason about.
+vars:
+
+# References to other stacks. E.g. feeding in outputs from another stack into this one.
+refs:
+
+# Tags that are applied to the stack (and thus resources within the stack)
+tags:
+
+# Information about the AWS account being deployed into. At a minimum needs region and
+# s3 bucket for uploading deployment artifacts.
+aws:
+
+# If deploying into multiple environments, any environment-specific configuration goes here.
+# You need to declare at least one environment in a top-level configuration file.
+environments:
+
+# Custom helper functions may be used by templates. Since we're injecting code into our runtime, the
+# configuration file must explicitly declare any helpers here.
+helpers:
+
+# Configuration that changes behavior of the 'stk' application rather configuration/template
+# deployment.
+core:
+```
+
+### Interpolation
+
+Configuration values can also include Jinja2 interpolation (although the file itself is *not* a Jinja template). Many
+patterns are stolen from Ansible, so some concepts may be familiar if you've used Ansible.
+
+For example:
+
+```yaml
+# $CONFIG_PATH/foo.yml
+aws:
+  cfn_bucket: my-bucket-for-{{ environment }}-cloudformation-deployments
+```
+
+Declares a different bucket per tier.
+
+### Configuration Hierarchy
+
+Obviously, providing deploying the same template into dev, test, and production is not overly useful. We need to be
+able to deploy environment-specific configuration to each stack.
+
+Under each environment (e.g. `environments` -> `dev`), we can apply almost all the top-level configuration items to
+override the defaults.
+
+For example:
+```yaml
+vars:
+  foo: fiz
+
+environments:
+  dev:
+    vars:
+      foo: fuz
+  test:
+  prod:
+```
+
+In this example, `foo` is `fuz` for development deployments, and `fiz` for test and prod.
+
+Most configuration options can have environment specific overrides.
+
+For example:
+
+```yaml
+environments:
+  dev:
+    aws:
+      region: ap-southeast-2
+    template:
+      version: # use version from working directory
+  test:
+    aws:
+      region: us-east-1
+    template:
+      version: main
+```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-<!-- GETTING STARTED -->
-## Getting Started
 
-TODO
 
 ### Prerequisites
 
@@ -72,7 +262,9 @@ TODO
 
 ### Installation
 
-TODO
+* `pip3 install stk`
+* `pyenv init .env`
+* `source ~/.env/bin/activate`
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -82,6 +274,26 @@ TODO
 TODO
 
 <p align="right">(<a href="#top">back to top</a>)</p>
+
+This section provides a quick overview of concepts
+### Terminology
+
+* **Environment**. What “level” are deploying a stack. E.g. development, test, stage, production, etc.
+* **Template**. A YAML CloudFormation template (with Jinja2 templates, so yes — we're templating templates).
+* **Archetype**. A common architectural building block that we deploy into each tier. I.e. same business function, but in dev, test, stage etc.
+* **Configuration File**. A YAML file that defines what CloudFormation stacks are to be deployed. There are two flavours
+  of configuration file:
+  * Top-level configuration files. These define what *environments* a given stack can be deployed - i.e. 1:1 mapping of top-level config files to *archetype*.
+  * Include files. These are YAML files, mostly same structure as top-level configuration, but exist only to reduce copy
+    & paste between top-level configuration files. These are stored in an `includes/` directory.
+* **Stack**. A CloudFormation stack. For our purpose, it is an instance of an Archetype - i.e. template + configuration file + tier.
+
+Durning development, we typically work with two git repositories:
+
+* Configuration files (`$CONFIG_PATH`)
+* Templates (`$TEMPLATES_PATH`)
+
+Often the template and configuration filenames are the same — so I typically use `.yml` extension for config files, and `.yaml` for templates. YMMV.
 
 ## Roadmap
 
