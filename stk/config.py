@@ -263,7 +263,7 @@ class Config:
             "deploy": self.deploy,
             "refs": self.refs,
             "environ": os.environ,
-            "aws_cfn_bucket": self.aws.cfn_bucket,
+            "cfn_bucket": self.aws.cfn_bucket,
             "__config_dir": pathlib.Path(config_path),
         }
         self.vars = self.Vars(includes.fetch_dict("vars", environment, default_vars))
