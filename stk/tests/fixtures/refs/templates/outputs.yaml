@@ -9,4 +9,4 @@ Resources:
 Outputs:
   FirstOutput:
     Description: Some outputs
-    Value: !Ref EC2EIP
+    Value: "hello"

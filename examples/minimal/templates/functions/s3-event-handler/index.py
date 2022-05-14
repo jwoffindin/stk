@@ -1,5 +1,6 @@
 # This ping/pong handler creates a .pong file in response to a .ping file
 # being created in subscribed S3 bucket.
+
 import boto3
 
 

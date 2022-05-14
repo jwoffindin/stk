@@ -4,17 +4,12 @@ import os
 import stat
 import giturlparse
 import urllib
+import logging
 
 from dataclasses import dataclass
 from git import Repo
 from os import path, walk
 from pathlib import Path
-
-import logging
-
-logging.basicConfig(filename="stk.log", filemode="w", level=os.environ.get("LOG_LEVEL", "INFO"))
-
-log = logging.getLogger("template provider")
 
 
 class GenericProvider:

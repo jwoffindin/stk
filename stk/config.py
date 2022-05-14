@@ -3,6 +3,7 @@ import pathlib
 
 import re
 import os
+import logging
 
 from dataclasses import dataclass
 from jinja2 import Environment, StrictUndefined
@@ -17,6 +18,9 @@ from .config_file import ConfigFile
 from .template_source import TemplateSource
 from .basic_stack import StackReference
 from .aws_config import AwsSettings
+
+logging.basicConfig(filename="stk.log", filemode="w", level=os.environ.get("LOG_LEVEL", "INFO"))
+log = logging.getLogger("config")
 
 
 class Config:
@@ -130,6 +134,7 @@ class Config:
         def __init__(self, stack_refs: dict, config: Config):
             self.config = config
             self.refs = stack_refs
+            log.debug("defined refs: %s" % self.refs)
 
         def __contains__(self, name: str) -> bool:
             return name in self.stacks()
@@ -138,54 +143,74 @@ class Config:
             return self.stack(name)
 
         def output(self, name: str, output_name: str) -> str:
+            log.info(f"getting output {output_name} from stack {name}")
             stack = self.stack(name)
-            if stack:
-                return stack.output(output_name)
-            else:
-                raise Exception(f"Stack {name} does not exist")
+            if not stack.exists():
+                if stack.optional:
+                    log.info("stack does not exist, but is optional")
+                    return None
+                raise Exception(f"Stack config.refs[{name}] ({stack.name}) does not exist, but is required")
+
+            return stack.output(output_name)
 
         def stack(self, name: str) -> StackReference:
             """
             Returns stack object, or None if stack is optional but is not found
             """
-            stack_names = sorted(self.refs.keys())
-            if name not in stack_names:
+            stacks = self.stacks()
+            if name not in stacks:
+                stack_names = sorted(self.refs.keys())
                 raise Exception(f"Attempt to access stack {name}, but it's not defined in config.refs - only {', '.join(stack_names)} are defined")
 
-            stacks = self.stacks()
-            stack = stacks.get(name)
-            if stack.exists():
-                return stack
+            return stacks.get(name)
+
+        @dataclass
+        class StackRefOpts:
+            stack_name: str
+            optional: bool
+
+        class OptionalStackReference(StackReference):
+            def __init__(self, aws: AwsSettings, name: str, optional: bool):
+                super().__init__(aws=aws, name=name)
+                self.optional = optional
 
         def stacks(self) -> dict:
             if not hasattr(self, "_stacks"):
-                try:
-                    self._stacks = dict()
-                    for name, cfg in self.refs.items():
-                        if name == "environment":
-                            continue
+                # _stacks is dict of {name => StackReference() for each named stack. This includes
+                # stacks that don't exist.
+                self._stacks = dict()
+                for name, cfg in self.refs.items():
+                    if name == "environment":
+                        continue
 
-                        if not cfg:
-                            cfg = {}
+                    if not cfg:
+                        cfg = {}
 
+                    if not issubclass(type(cfg), dict):
+                        print(f"{name} is not a valid stack reference definition (from {self.refs})")
+                        exit(-1)
+
+                    # Try building dict of options. This can fail if interpolating incorrect variable or
+                    try:
                         final_opts = Config.InterpolatedDict({**self.DEFAULTS, **cfg}, {"environment": self.config.environment, "name": name.replace("_", "-")})
-                        self._stacks[name] = StackReference(aws=self.config.aws, name=final_opts["stack_name"])
-                except Exception as ex:
-                    print(ex)
-                    raise
+                    except Exception as ex:
+                        print(f"Unable to process settings for stack reference {name} -> {cfg} (from {self.refs})")
+                        exit(-1)
 
-                # Check that required stacks exists
-                for name, stk in self._stacks.items():
-                    if stk.exists() or final_opts["optional"]:
-                        pass
-                    else:
-                        raise Exception(f"Stack reference {name} - {stk.name} does not exist, but is required")
+                    try:
+                        log.info(f"stack reference {name}: {final_opts}")
+                        opts = self.StackRefOpts(**final_opts)
+                    except Exception as ex:
+                        log.exception(f"Invalid configuration for stack.refs '{name}' {self.refs}: {ex}", exc_info=ex)
+                        raise
+
+                    self._stacks[name] = self.OptionalStackReference(aws=self.config.aws, name=opts.stack_name, optional=opts.optional)
 
             return self._stacks
 
     @dataclass
     class DeployMetadata:
-        timestamp: string = "?"
+        timestamp: str = "?"
         template_sha: str = "?"
         template_ref: str = "?"
         config_sha: str = "?"

@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import os
+import logging
+
 from botocore.exceptions import ClientError
 
 from .aws_config import AwsSettings
 from .cfn_bucket import CfnBucket
+
+logging.basicConfig(filename="stk.log", filemode="w", level=os.environ.get("LOG_LEVEL", "INFO"))
+log = logging.getLogger("basic_stack")
 
 
 class BasicStack:
@@ -27,12 +33,12 @@ class BasicStack:
         return self.__outputs
 
     def output(self, key) -> str:
-        # print(f"Getting output {key} from {self.name}")
+        log.info(f"Getting output {key} from {self.name}")
         outputs = self.outputs()
-        if outputs:
-            if key in outputs:
-                return outputs[key]
-            raise KeyError(f"{key} not in outputs of {self.name} - only have {list(outputs.keys())}")
+
+        if key in outputs:
+            return outputs[key]
+        raise KeyError(f"{key} not in outputs of {self.name} - only have {list(outputs.keys())}")
 
     def describe_stack(self):
         try:
