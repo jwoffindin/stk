@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+from typing import IO
 import jinja2
 import json
 import os
@@ -28,10 +29,10 @@ from .config import Config
 @dataclass
 class ZipContent(Uploadable):
     name: str
-    content: bytes
+    content: IO
     md5sum: str
 
-    def body(self) -> bytes:
+    def body(self) -> IO:
         return self.content
 
     def key(self) -> str:
@@ -100,7 +101,9 @@ class TemplateHelpers:
 
     def lambda_uri(self, name: str) -> str:
         lambda_path = path.join("functions", name)
-        return self.bucket.upload(self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path))).as_s3()
+
+        zipped = self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path))
+        return self.bucket.upload(zipped).as_s3()
 
     def ignore_list(self, p: str):
         provider = self.provider
@@ -191,8 +194,8 @@ class TemplateHelpers:
         """
         checksums = {}
 
-        zip_content = BytesIO()
-        with ZipFile(zip_content, mode="w", compression=ZIP_BZIP2) as zip:
+        tmp_file = tempfile.TemporaryFile()
+        with ZipFile(tmp_file, mode="w", compression=ZIP_BZIP2) as zip:
             print(f"Adding files from {dir}")
             for file_path, type, file_content in self.provider.find(dir, ignore):
                 # print(f"Processing {file_path} ({type})")
@@ -215,7 +218,9 @@ class TemplateHelpers:
         sorted_checksums = sorted(checksums.items())
         md5sum = hashlib.md5(str(sorted_checksums).encode("utf-8")).hexdigest()
 
-        return ZipContent(dir, zip_content.getvalue(), md5sum)
+        tmp_file.seek(0)  # required?
+
+        return ZipContent(dir, tmp_file, md5sum)
 
     def _load_custom_helper(self, name: str):
         """
