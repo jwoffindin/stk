@@ -114,10 +114,13 @@ class Config:
 
             for k, v in object.items():
                 try:
-                    value = env.from_string(str(v)).render(vars)
-                    parsed_value = safe_load(value)
-                    if parsed_value != None:
-                        self[k] = parsed_value
+                    if v == None:
+                        self[k] = None
+                    else:
+                        value = env.from_string(str(v)).render(vars)
+                        parsed_value = safe_load(value)
+                        if parsed_value != None:
+                            self[k] = parsed_value
                 except Exception as ex:
                     raise (Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
 
