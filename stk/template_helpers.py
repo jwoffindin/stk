@@ -80,6 +80,7 @@ class TemplateHelpers:
         g["lambda_uri"] = self.lambda_uri
         g["user_data"] = self.user_data
         g["include_file"] = self.include_file
+        g["upload_zip"] = self.upload_zip
         g["tags"] = self.tags
 
         # Custom helpers (defined in templates/helpers and specified in config via 'helpers' stanza)
@@ -187,6 +188,10 @@ class TemplateHelpers:
         indended = "\n".join(map(lambda line: " " * padding + line, result.splitlines())) + "\n"
 
         return prefix + indended
+
+    def upload_zip(self, dir: str, prefix: str = "") -> str:
+        zipped = self.zip_tree(dir=dir, prefix=prefix)
+        return self.bucket.upload(zipped).as_s3()
 
     def zip_tree(self, dir: str, ignore=None, prefix="") -> ZipContent:
         """

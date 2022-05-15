@@ -1,7 +1,10 @@
 from __future__ import annotations
-import json
-from pytest import fixture
 
+import json
+import zipfile
+
+from io import BytesIO
+from pytest import fixture
 
 from . import StackFixtures
 from ..config import Config
@@ -64,6 +67,26 @@ class TestTemplateHelpers(StackFixtures):
 
         uri2 = helpers.lambda_uri("a_function")
         assert uri == uri2, "Generated URLs are deterministic"
+
+    def test_upload_zip(self, cfn_bucket, provider, config):
+        bucket = CfnBucket(config.aws)
+        helpers = TemplateHelpers(provider, bucket=bucket, custom_helpers=[], config=config)
+
+        # Upload our test directory. In contains a single file test.txt
+        uri = helpers.upload_zip("files/test", prefix="/opt/foo")
+
+        # Check it has correct url
+        assert uri.startswith("s3://foo/files/test/15315fc306560b9eb8332fe277bf8e95.zip")
+
+        # Download file from S3 and check the file is valid ZIP and it contains the
+        # expected content
+        s3 = config.aws.resource("s3")
+        object = s3.Object(cfn_bucket, "files/test/15315fc306560b9eb8332fe277bf8e95.zip")
+
+        content = object.get()["Body"].read()
+        fh = BytesIO(content)
+
+        assert "/opt/foo/test.txt" in zipfile.ZipFile(fh, "r").namelist()
 
     def test_user_data(self, provider, config):
         helpers = TemplateHelpers(provider, bucket=None, custom_helpers=[], config=config)
