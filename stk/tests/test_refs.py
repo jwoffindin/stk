@@ -34,6 +34,9 @@ class TestStackRefs(ConfigFixtures, StackFixtures):
         assert refs.stack("required_stack").exists()
         assert refs.output("optional_stack", "foo") == None
 
+        assert not refs.exists("optional_stack")
+        assert refs.exists("required_stack")
+
     def test_stack_not_defined(self, config):
         v = Config.StackRefs(stack_refs={}, config=config)
         with raises(Exception, match="Attempt to access stack foo, but it's not defined in config.refs"):

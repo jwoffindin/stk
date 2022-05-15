@@ -145,6 +145,9 @@ class Config:
         def __getitem__(self, name: str) -> str:
             return self.stack(name)
 
+        def exists(self, name: str):
+            return self[name].exists()
+
         def output(self, name: str, output_name: str) -> str:
             log.info(f"getting output {output_name} from stack {name}")
             stack = self.stack(name)
