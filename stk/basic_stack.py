@@ -67,7 +67,10 @@ class BasicStack:
 
         ret_val = {}
         for output in stack["Outputs"]:
-            ret_val[output["OutputKey"]] = self.Output(output["OutputValue"], output["Description"])
+            description = ""
+            if "Description" in output:
+                description = output["Description"]
+            ret_val[output["OutputKey"]] = self.Output(output["OutputValue"], description)
         return ret_val
 
 
