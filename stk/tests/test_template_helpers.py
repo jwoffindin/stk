@@ -76,7 +76,7 @@ class TestTemplateHelpers(StackFixtures):
         uri = helpers.upload_zip("files/test", prefix="/opt/foo")
 
         # Check it has correct url
-        assert uri.startswith("s3://foo/files/test/15315fc306560b9eb8332fe277bf8e95.zip")
+        assert uri == "files/test/15315fc306560b9eb8332fe277bf8e95.zip"
 
         # Download file from S3 and check the file is valid ZIP and it contains the
         # expected content

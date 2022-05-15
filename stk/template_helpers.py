@@ -189,9 +189,18 @@ class TemplateHelpers:
 
         return prefix + indended
 
-    def upload_zip(self, dir: str, prefix: str = "") -> str:
+    def upload_zip(self, dir: str, prefix: str = "", returns: str = "key") -> str:
         zipped = self.zip_tree(dir=dir, prefix=prefix)
-        return self.bucket.upload(zipped).as_s3()
+
+        res = self.bucket.upload(zipped)
+        if returns == "key":
+            return res.key
+        elif returns == "s3-uri":
+            return res.as_s3()
+        elif returns == "http-uri":
+            return res.as_http()
+        else:
+            raise Exception(f"Unknown 'returns' value {returns} - expect one of (key, s3-uri, http-uri)")
 
     def zip_tree(self, dir: str, ignore=None, prefix="") -> ZipContent:
         """
