@@ -14,6 +14,9 @@ class Fixtures:
     def fixture_path(self, *dir):
         return path.join(path.dirname(__file__), "fixtures", *dir)
 
+    def fixture_content(self, *dir) -> bytes:
+        return open(self.fixture_path(*dir), "rb").read()
+
 
 class ConfigFixtures(Fixtures):
     @fixture

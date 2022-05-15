@@ -177,6 +177,15 @@ class Config:
                 super().__init__(aws=aws, name=name)
                 self.optional = optional
 
+            def describe_stack(self):
+                """
+                For references, cache the describe_stack - we're not expecting
+                it to change.
+                """
+                if not hasattr(self, "_describe_stack_result"):
+                    self._describe_stack_result = super().describe_stack()
+                return self._describe_stack_result
+
         def stacks(self) -> dict:
             if not hasattr(self, "_stacks"):
                 # _stacks is dict of {name => StackReference() for each named stack. This includes

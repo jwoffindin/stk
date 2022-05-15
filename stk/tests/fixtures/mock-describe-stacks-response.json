@@ -1,0 +1,18 @@
+{
+  "Stacks": [
+    {
+      "StackName": "dev-some-other-stack",
+      "StackId": "arn:aws:cloudformation:us-east-1:123456789:stack/MyStack/aaf549a0-a413-11df-adb3-5081b3858e83",
+      "CreationTime": "2010-07-27T22:28:28Z",
+      "StackStatus": "CREATE_COMPLETE",
+      "DisableRollback": false,
+      "Outputs": [
+        {
+          "OutputKey": "MyOutput",
+          "OutputValue": "An Output Value",
+          "Description": "Some description"
+        }
+      ]
+    }
+  ]
+}

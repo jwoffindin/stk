@@ -1,4 +1,7 @@
+import json
+
 from pytest import fixture, raises, mark
+from botocore.stub import Stubber
 
 from . import ConfigFixtures, StackFixtures
 from ..config import Config
@@ -30,10 +33,6 @@ class TestStackRefs(ConfigFixtures, StackFixtures):
         assert not refs.stack("optional_stack").exists()
         assert refs.stack("required_stack").exists()
         assert refs.output("optional_stack", "foo") == None
-
-    @mark.skip("moto doesn't support outputs")
-    def test_stack_output(self, required_stack, config):
-        assert config.refs.output("required_stack", "FirstOutput") == "foo"
 
     def test_stack_not_defined(self, config):
         v = Config.StackRefs(stack_refs={}, config=config)
@@ -92,3 +91,35 @@ class TestStackRefs(ConfigFixtures, StackFixtures):
 
         with raises(KeyError, match="'unknown_output not in outputs of dev-some-other-stack"):
             refs.output("some-other-stack", "unknown_output")
+
+    def create_cfn_mock_response(self, refs):
+        # refs.stacks()
+        for name in refs.stacks().keys():
+            # mock the cfn client
+            stubber = Stubber(refs[name].cfn)
+            expected_params = {"StackName": f"dev-{name}"}
+            response = json.loads(self.fixture_content("mock-describe-stacks-response.json"))
+            stubber.add_response("describe_stacks", response, expected_params)
+
+            return stubber
+
+    def test_output_not_exists(self, config, cloudformation):
+        """
+        Accessing a non-existant output on a stack will raise an exception
+        """
+        refs = Config.StackRefs(stack_refs={"some-other-stack": None}, config=config)
+        stubber = self.create_cfn_mock_response(refs)
+        with stubber:
+            with raises(Exception, match="AnOutput not in outputs of dev-some-other-stack - only have \['MyOutput'\]"):
+                refs.output("some-other-stack", "AnOutput")
+
+    def test_output_exist(self, config, cloudformation):
+        """
+        Referencing an output that *does* exist will actually return the value :-)
+        """
+        refs = Config.StackRefs(stack_refs={"some-other-stack": None}, config=config)
+        stubber = self.create_cfn_mock_response(refs)
+        with stubber:
+            output = refs.output("some-other-stack", "MyOutput")
+            assert output == "An Output Value"
+            assert output.description == "Some description"
