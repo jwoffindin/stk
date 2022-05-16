@@ -26,9 +26,8 @@ class AwsSettings:
             if self.account_id:
                 if str(account_id) != str(self.account_id):
                     raise Exception(f"Incorrect AWS Account - exected {self.account_id}, but appear to be using {account_id} ")
-            else:
-                self._checked_account = True
 
+            self._checked_account = True
             self.account_id = account_id
 
         return session

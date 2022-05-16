@@ -63,6 +63,19 @@ The two key benefits of using `stk` for CloudFormation management.
   you can see exactly what is going to change.
 
 
+### Prerequisites
+
+* Python 3.8+
+
+### Installation
+
+* `pip3 install stk`
+* `pyenv init .env`
+* `source ~/.env/bin/activate`
+
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+
 ## Getting started
 
 Quick start:
@@ -76,6 +89,18 @@ Quick start:
 
 ### Concepts
 
+## Commands
+
+A full list of commands are available by running `stk help`
+
+The most common commands:
+
+* show-config
+* show-template
+* validate
+* diff
+* create — deploy a new stack `cfn create <archetype> <environment>`
+* update - update an existing stack `cfn update <archetype> <environment>`
 ### Configuration file
 
 A configuration file is simply a YAML file used to that declares:
@@ -254,19 +279,146 @@ environments:
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+## Configuration Detail
+
+### `includes:`
+
+Include other configuration files.
+
+Allows composition and sharing of common configuration to reduce unnecessary duplication.
+
+It is a list of YAML files loaded from `includes/` directory.
+
+They are listed in highest-to-lowest precedence.
+
+```
+# sample.yml
+includes:
+  - a
+  - b
+
+# includes/a.yml
+vars:
+  foo: 'a'
+
+# includes/b.yml
+vars:
+  foo: 'b'
+```
+
+in this example, the `foo` var will be given the value `a`.
+
+Two common use cases for include files are:
+
+1. Environment specific configuration - e.g. AWS account details
+1. Where multiple archetype files use the sample template.
+
+### `template:`
+
+Where to find the CloudFormation template. Supports local files, local git repositories
+or remote git repositories.
+
+### `params:`
+
+AWS Parameters that are passed into a stack. Minimize if possible, use `vars` instead.
+Good use cases include:
+
+* passing secrets
+* (that's about it?)
+
+### `vars:`
+
+Jinja2 variables/values passed to the template.
+
+Preferred way to manage configuration - e.g. use template conditions rather than 'native' AWS Template Conditions - they are unwieldy and can make changes hard to reason about.
 
 
-### Prerequisites
+### `refs:`
 
-* Python 3.8+
+References to other stacks. E.g. feeding in outputs from another stack into this one.
 
-### Installation
+### `tags:`
+Tags that are applied to the stack (and thus resources within the stack)
 
-* `pip3 install stk`
-* `pyenv init .env`
-* `source ~/.env/bin/activate`
+### `aws:`
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+Information about the AWS account being deployed into. At a minimum needs region and
+s3 bucket for uploading deployment artifacts.
+
+### `environments:`
+
+If deploying into multiple environments, any environment-specific configuration goes here.
+You need to declare at least one environment in a top-level configuration file.
+
+Each sub-key of `environments` is the environment name.
+
+Within a configuration file, environment-specific values take precedence over top-level configuration.
+
+For example:
+
+```
+vars:
+  a: 'foo'
+
+environments:
+  dev:
+    vars:
+      a: 'bar'
+  test:
+  prod:
+```
+
+In this case, a dev deployment `a` has value `bar`, and test/prod deployments `a` will value the value `foo`.
+
+The following sections can have environment-specific overrides:
+
+* `vars`
+* `params`
+* `aws`
+* `refs`
+* `tags`
+
+#### Valid deployment environments
+
+Within an archetype (top-level config) file, `environments` defines the allowable deployment
+environments. Environments defined in include files are not used for this purpose.
+
+In the following example, `a` can only be deployed as `dev` and `prod`, whereas `b` supports
+`dev`, `test` and `prod` as deployment environments:
+
+    # a.yml
+    includes:
+      - common
+    environments:
+      dev:
+      prod:
+
+    # b.yml
+    includes:
+      - common
+    environments:
+      dev:
+      test:
+      prod:
+
+    # includes/common.yml
+    environments:
+      dev:
+      test:
+      prod:
+
+
+### `helpers:`
+
+Custom helper functions may be used by templates. Since we're injecting code into our runtime, the
+configuration file must explicitly declare any helpers here.
+
+
+### `core`:
+
+Configuration that changes behavior of the 'stk' application rather configuration/template
+deployment.
+```
 
 
 ## Usage
