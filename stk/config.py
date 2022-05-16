@@ -180,6 +180,9 @@ class Config:
                 super().__init__(aws=aws, name=name)
                 self.optional = optional
 
+            def __getitem__(self, name: str) -> str:
+                return self.output(name)
+
             def describe_stack(self):
                 """
                 For references, cache the describe_stack - we're not expecting
