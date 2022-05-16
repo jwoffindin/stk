@@ -1,9 +1,0 @@
----
-includes:
-  - common
-
-vars:
-  bucket_name: "stk-test-bucket-{{ environment }}"
-
-environments:
-  dev:
