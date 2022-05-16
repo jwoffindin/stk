@@ -17,13 +17,15 @@ from io import BytesIO
 from jinja2 import Environment
 from os import path
 from pathlib import Path
-from zipfile import ZipFile, ZipInfo, ZIP_BZIP2
+from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
+from .human_bytes import HumanBytes
 from .cfn_bucket import CfnBucket, Uploadable
 from .ignore_file import parse_ignore_list
 from .multipart_encoder import multipart_encode
 from .aws_config import AwsSettings
 from .config import Config
+from . import clog
 
 
 @dataclass
@@ -209,8 +211,9 @@ class TemplateHelpers:
         checksums = {}
 
         tmp_file = tempfile.TemporaryFile()
-        with ZipFile(tmp_file, mode="w", compression=ZIP_BZIP2) as zip:
-            print(f"Adding files from {dir}")
+        with ZipFile(tmp_file, mode="w", compression=ZIP_DEFLATED) as zip:
+            clog(f"Adding files from {dir}")
+            count, size = 0, 0
             for file_path, type, file_content in self.provider.find(dir, ignore):
                 # print(f"Processing {file_path} ({type})")
                 file_path = path.join(prefix, file_path)
@@ -222,10 +225,15 @@ class TemplateHelpers:
                 # Set file perm ugo=rx, preserve symlinks - 0xa000 (0x120000) bit
                 info.external_attr = (0o120755 if type == "symlink" else 0o555) << 16
 
-                zip.writestr(info, data=file_content, compress_type=ZIP_BZIP2)
+                zip.writestr(info, data=file_content, compress_type=ZIP_DEFLATED)
 
                 # Record md5 checksum
                 checksums[path.join(dir, file_path)] = hashlib.md5(str(file_content).encode("utf-8")).hexdigest()
+
+                count += 1
+                size += info.file_size
+
+            clog(f"Added {count} files, total {HumanBytes.format(size)}")
 
         # final (composite) checksum is based on filenames and content md5s. They are sorted so checksum doesn't
         # vary if files are discovered in different orders.
