@@ -104,3 +104,22 @@ class TestEnvironmentalPrecdenceConfig(ConfigFixtures):
             Config("invalid-env", environment="stage", config_path=self.fixture_path("config", "core"))
 
         assert "invalid-env.yaml defines environments 'stage', which are is listed in core.environments (dev, test, prod)"
+
+
+@pytest.mark.parametrize("config", ["types"], indirect=True)
+class TestInterpolatedDict(ConfigFixtures):
+    def test_str(self, config):
+        assert config.vars["a_str"] == "hello!"
+
+    def test_int(self, config):
+        assert config.vars["an_int"] == 12
+
+    def test_false_preserved(self, config):
+        assert config.vars["a_false"] == False
+
+    def test_true_preserved(self, config):
+        assert config.vars["a_true"] == True
+
+    def test_none_preserved(self, config):
+        assert config.vars["a_none"] == None
+        assert config.vars["no_value"] == None

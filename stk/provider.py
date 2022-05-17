@@ -175,8 +175,7 @@ class GitProvider(GenericProvider):
 
 def provider(source):
     log.info(f"provider = {source}")
-    # TODO: why is version a string 'None' rather than just None?
-    if source.version and source.version != "None":
+    if source.version:
         return GitProvider(name=source.name, git_url=source.repo, root=source.root, git_ref=source.version)
     else:
         return FilesystemProvider(name=source.name, root=source.root)

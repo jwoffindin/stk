@@ -13,6 +13,7 @@ from rich.table import Table
 from sys import exc_info
 from yaml import safe_load
 
+
 from . import ConfigException
 from .config_file import ConfigFile
 from .template_source import TemplateSource
@@ -87,10 +88,10 @@ class Config:
                     try:
                         del errors[key]
                         if type(value) in [bool, dict, list, str]:
-                            # print(f"expanding {key}, type={type(value)}")
                             tpl = env.from_string(str(value))  # convert value to jinja2 template
                             result = str(tpl.render(self))
-                            self[key] = safe_load(result) or ""
+                            self[key] = safe_load(result)
+                            # print(f"expanding {key}, {value}({type(value)}) -> {self[key]}({type(self[key])})")
                         else:
                             # print(f"skipping {key}, type={type(value)}")
                             self[key] = value  # Don't try and process this value as Jinja template
