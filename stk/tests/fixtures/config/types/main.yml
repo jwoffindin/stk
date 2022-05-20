@@ -1,0 +1,15 @@
+---
+vars:
+  a_str: hello!
+  an_int: 12
+  a_false: False
+  a_true: True
+  a_none: null
+  no_value:
+
+environments:
+  test:
+
+aws:
+  region: us-east-1
+  cfn_bucket: foo
