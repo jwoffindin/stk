@@ -1,13 +1,14 @@
 from __future__ import annotations
-import pathlib
 
+import pathlib
 import re
 import os
 import logging
+import git
 
 from dataclasses import dataclass
+from datetime import datetime
 from jinja2 import Environment, StrictUndefined
-from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from sys import exc_info
@@ -20,7 +21,6 @@ from .template_source import TemplateSource
 from .basic_stack import StackReference
 from .aws_config import AwsSettings
 
-logging.basicConfig(filename="stk.log", filemode="w", level=os.environ.get("LOG_LEVEL", "INFO"))
 log = logging.getLogger("config")
 
 
@@ -229,11 +229,22 @@ class Config:
 
     @dataclass
     class DeployMetadata:
-        timestamp: str = "?"
-        template_sha: str = "?"
-        template_ref: str = "?"
-        config_sha: str = "?"
-        config_ref: str = "?"
+        def __init__(self, config_path: str):
+            # Timestamp in UTC
+            self.timestamp = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%S%Z")
+
+            # Config git HEAD state
+            try:
+                config_head = git.Repo(config_path).head
+                self.config_sha = str(config_head.commit.hexsha)
+                self.config_ref = str(config_head.reference)
+            except Exception as ex:
+                log.warning("Unable to retrieve git info for config project", exc_info=ex)
+                self.config_sha = "?"
+                self.config_ref = "?"
+
+            self.template_sha = "?"
+            self.template_ref = "?"
 
     def __init__(
         self,
@@ -274,14 +285,10 @@ class Config:
         except Exception as ex:
             raise Exception("Unable to parse stack refs (refs:). have {refs}: {ex}")
 
-        # Deploy metadata is used to track deploys back to version controlled config/templates.
-        self.deploy = self.DeployMetadata()
-
         default_vars = {
             "__config_dir": pathlib.Path(config_path),
             "account_id": self.aws.account_id,
             "cfn_bucket": self.aws.cfn_bucket,
-            "deploy": self.deploy,
             "environ": os.environ,
             "environment": environment,
             "name": name,
@@ -312,6 +319,9 @@ class Config:
 
         # Ugly hack. Need to come up with something better after I've had a coffee
         self.vars["stack_name"] = self.core.stack_name
+
+        # Deploy metadata is used to track deploys back to version controlled config/templates.
+        self.vars["deploy"] = self.DeployMetadata(config_path=config_path)
 
         # perform final linting/validation
         includes.validate(self)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import logging
 
 from typing import List
 from cfn_tools import load_yaml
@@ -11,6 +12,8 @@ from .provider import GenericProvider
 from .config import Config
 from .template_helpers import TemplateHelpers
 from .cfn_bucket import CfnBucket, Uploadable
+
+log = logging.getLogger("template")
 
 
 class FailedTemplate(dict):
@@ -134,6 +137,21 @@ class TemplateWithConfig(Template):
         self.vars = config.vars
 
         helpers = TemplateHelpers(provider=provider, bucket=CfnBucket(config=config.aws), custom_helpers=config.helpers, config=config)
+
+        # Ugly hack alert. Injecting template commit information to vars.deploy() object here
+        try:
+            head = provider.head()
+            if head:
+                if "deploy" in config.vars:
+                    deploy = config.vars["deploy"]
+                    deploy.template_sha = str(head.hexsha)
+                    deploy.template_ref = str(provider.git_ref)
+                else:
+                    log.info("Skipping setting template git info, no deploy object in config.vars")
+            else:
+                log.info("No head() for template repo")
+        except Exception as ex:
+            log.warning("Unable to add template git info", exc_info=ex)
 
         super().__init__(name=config.template_source.name, provider=provider, helpers=helpers)
 

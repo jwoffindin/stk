@@ -43,6 +43,9 @@ class FilesystemProvider(GenericProvider):
         if not Path(self.root).is_dir:
             raise Exception(f"{self.root} does not appear to be a directory")
 
+    def head(self):
+        return None
+
     def content(self, file_path: str) -> bytes:
         return open(path.join(self.root, file_path), "rb").read()
 
@@ -133,9 +136,14 @@ class GitProvider(GenericProvider):
     def content(self, *p) -> bytes:
         file_path = path.join(self.root, *p)
         try:
+            log.info(f"getting content for {file_path}")
             return self.commit.tree[file_path].data_stream.read()
-        except KeyError:
-            raise (Exception(f"Git object {path.join(self.git_url, file_path)}@{self.git_ref}: does not exist"))
+        except KeyError as ex:
+            log.exception(f"Git object (git={self.git_url} file_path={file_path})@{self.git_ref}: does not exist", exc_info=ex)
+            raise
+
+    def head(self):
+        return self.commit
 
     def is_file(self, *p) -> bool:
         file_path = path.join(self.root, *p)
@@ -179,6 +187,7 @@ class GitProvider(GenericProvider):
 def provider(source):
     log.info(f"provider = {source}")
     if source.version:
-        return GitProvider(name=source.name, git_url=source.repo, root=source.root, git_ref=source.version)
+
+        return GitProvider(name=source.name, git_url=source.repo, root=(source.root or "/"), git_ref=source.version)
     else:
         return FilesystemProvider(name=source.name, root=source.root)

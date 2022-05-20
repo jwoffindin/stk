@@ -320,8 +320,47 @@ Two common use cases for include files are:
 
 ### `template:`
 
-Where to find the CloudFormation template. Supports local files, local git repositories
+Defines where to find the CloudFormation template. Supports local files, local git repositories
 or remote git repositories.
+
+#### Plain filesystem (not git)
+
+If `version` is not set, then the templates are assumed to come from local filesystem - useful
+when developing templates. In this case, set `root` to path.
+
+E.g.
+
+    environments:
+      dev:
+        template:
+          version:
+          root: ../stk-templates
+
+You can use an environment variable to allow over-riding of template location with something like:
+
+    environments:
+      dev:
+        template:
+          version:
+          root: {{ environ['TEMPLATE_PATH'] | default)'../stk-templates') }}
+
+#### Git
+
+Similar to above, but uses current commit `HEAD` in local filesystem:
+
+    environments:
+      dev:
+        template:
+          version: HEAD
+          repo: {{ environ['TEMPLATE_PATH'] | default('../stk-templates') }}
+
+Remote repositories are also supported. For example, the following will use current main
+of github repository:
+
+    template:
+      version: main
+      repo: git@github.com:jwoffindin/stk-templates.git
+
 
 ### `params:`
 

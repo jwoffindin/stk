@@ -22,4 +22,4 @@ class TestStackRefs(ConfigFixtures):
         rendered = t.render(vars=config.vars)
         assert type(rendered) == RenderedTemplate
 
-        assert rendered["Metadata"]["stack"]["deployed_at"] == "?"
+        assert rendered["Metadata"]["stack"]["deployed_at"].startswith("20")
