@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
-from typing import IO
 import jinja2
 import json
 import os
@@ -10,7 +9,9 @@ import re
 import shutil
 import tempfile
 import time
+import logging
 
+from typing import IO
 from dataclasses import dataclass
 from importlib import util as importutil
 from io import BytesIO
@@ -25,7 +26,8 @@ from .ignore_file import parse_ignore_list
 from .multipart_encoder import multipart_encode
 from .aws_config import AwsSettings
 from .config import Config
-from . import clog
+
+log = logging.getLogger("template_helpers")
 
 
 @dataclass
@@ -212,7 +214,7 @@ class TemplateHelpers:
 
         tmp_file = tempfile.TemporaryFile()
         with ZipFile(tmp_file, mode="w", compression=ZIP_DEFLATED) as zip:
-            clog(f"Adding files from {dir}")
+            log(f"Adding files from {dir}")
             count, size = 0, 0
             for file_path, type, file_content in self.provider.find(dir, ignore):
                 # print(f"Processing {file_path} ({type})")
@@ -233,7 +235,7 @@ class TemplateHelpers:
                 count += 1
                 size += info.file_size
 
-            clog(f"Added {count} files, total {HumanBytes.format(size)}")
+            log(f"Added {count} files, total {HumanBytes.format(size)}")
 
         # final (composite) checksum is based on filenames and content md5s. They are sorted so checksum doesn't
         # vary if files are discovered in different orders.
