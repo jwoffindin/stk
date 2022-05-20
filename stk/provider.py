@@ -121,7 +121,7 @@ class GitProvider(GenericProvider):
                 if path.exists(target_dir):
                     log.info(f"using existing cached version {target_dir}")
                     self.repo = Repo(target_dir)
-                    log.info(f"updating remote 'origin'")
+                    log.info(f"git pull remote 'origin'")
                     self.repo.remotes["origin"].pull()
                 else:
                     log.info(f"don't have a cached copy of {self.name} in {cache_dir}")
@@ -131,7 +131,7 @@ class GitProvider(GenericProvider):
                     self.repo = Repo.clone_from(self.git_url, target_dir)
         log.info(f"getting commit {self.git_ref} from {self.repo}")
         self.commit = self.repo.commit(self.git_ref)
-        log.info("done")
+        log.info(f"have commit {self.commit.hexsha}")
 
     def content(self, *p) -> bytes:
         file_path = path.join(self.root, *p)
@@ -187,7 +187,7 @@ class GitProvider(GenericProvider):
 def provider(source):
     log.info(f"provider = {source}")
     if source.version:
-
-        return GitProvider(name=source.name, git_url=source.repo, root=(source.root or "/"), git_ref=source.version)
+        root = source.root or "/"
+        return GitProvider(name=source.name, git_url=source.repo, root=root, git_ref=source.version)
     else:
         return FilesystemProvider(name=source.name, root=source.root)

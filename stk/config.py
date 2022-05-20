@@ -271,8 +271,10 @@ class Config:
         if environment not in cfg.environments():
             raise ConfigException(f"Environment {environment} is not a valid environment for {cfg.filename}. Only {cfg.environments()} permitted.")
 
+        # Load top-level config file and all included configs
         includes = cfg.load_includes()
 
+        # Most other config supports pulling stuff from AWS, so initialize this first
         try:
             aws_settings = self.InterpolatedDict(includes.fetch_dict("aws", environment), {"environment": environment})
             self.aws = AwsSettings(**aws_settings)
@@ -314,10 +316,21 @@ class Config:
             includes.fetch_dict(
                 "template",
                 environment,
-                {"name": name, "root": template_path},
+                {"name": name, "root": None},
             ),
             self.vars,
         )
+
+        # I'm not happy about this
+        if template_source["root"] == None:
+            if "repo" in template_source and template_source["repo"]:
+                # git repo, we default "root" to / - i.e. relevant to git root
+                template_source["root"] = "/"
+            else:
+                # filesystem repo, we default "root" to provided template_path (--template-path args)
+                # mostly useful for tests
+                template_source["root"] = template_path
+
         self.template_source = TemplateSource(**template_source)
 
         # Ugly hack. Need to come up with something better after I've had a coffee
