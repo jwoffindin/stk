@@ -24,7 +24,6 @@ from .human_bytes import HumanBytes
 from .cfn_bucket import CfnBucket, Uploadable
 from .ignore_file import parse_ignore_list
 from .multipart_encoder import multipart_encode
-from .aws_config import AwsSettings
 from .config import Config
 
 log = logging.getLogger("template_helpers")

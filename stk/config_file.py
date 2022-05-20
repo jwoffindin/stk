@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from os import path
+import yaml
+import logging
+
 from pathlib import Path
-from yaml import safe_load
+
+log = logging.getLogger("config_file")
 
 
 class ConfigFiles(list):
@@ -60,7 +63,12 @@ class ConfigFile(dict):
         self["template"] = {}
         self["tags"] = {}
 
-        cfg = safe_load(open(Path(config_dir, self.filename))) or dict()
+        try:
+            filepath = Path(config_dir, self.filename)
+            cfg = yaml.safe_load(open(filepath)) or dict()
+        except yaml.parser.ParserError as ex:
+            log.fatal(f"Unable to load configuration file {filepath}", exc_info=ex)
+            raise
 
         # hack 'template: [ name: 'template_name' } shortcut
         if "template" in cfg and type(cfg["template"]) == str:
