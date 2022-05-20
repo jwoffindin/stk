@@ -87,7 +87,25 @@ class RenderedTemplate(dict, Uploadable):
         return "/".join(["templates", self.name, self.md5() + ".zip"])
 
     def iam_capabilities(self) -> List[str]:
-        return self.get("Metadata", {}).get("iam_capabilities", [])
+        """
+        Stacks are decorated with iam capability requirements. Can either do:
+
+            # deprecated
+            Metadata:
+                iam_capabilities: [....]
+
+        or:
+
+            Metadata:
+                stack:
+                    iam_capabilities: [....]
+
+        """
+        metadata = self.get("Metadata", {})
+        if "iam_capabilities" in metadata:
+            log.warning("Metadata.iam_capabilities is deprecated. Use Metadata.stack.iam_capabilities instead")
+            return metadata.get("iam_capabilities", [])
+        return metadata.get("stack", {}).get("iam_capabilities", [])
 
 
 class Template:

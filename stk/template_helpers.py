@@ -214,7 +214,7 @@ class TemplateHelpers:
 
         tmp_file = tempfile.TemporaryFile()
         with ZipFile(tmp_file, mode="w", compression=ZIP_DEFLATED) as zip:
-            log(f"Adding files from {dir}")
+            log.info(f"Adding files from {dir}")
             count, size = 0, 0
             for file_path, type, file_content in self.provider.find(dir, ignore):
                 # print(f"Processing {file_path} ({type})")
@@ -235,7 +235,7 @@ class TemplateHelpers:
                 count += 1
                 size += info.file_size
 
-            log(f"Added {count} files, total {HumanBytes.format(size)}")
+            log.info(f"Added {count} files, total {HumanBytes.format(size)}")
 
         # final (composite) checksum is based on filenames and content md5s. They are sorted so checksum doesn't
         # vary if files are discovered in different orders.
