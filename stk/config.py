@@ -15,7 +15,7 @@ from sys import exc_info
 from yaml import safe_load
 
 
-from . import ConfigException
+from . import ConfigException, VERSION
 from .config_file import ConfigFile
 from .template_source import TemplateSource
 from .basic_stack import StackReference
@@ -232,6 +232,9 @@ class Config:
         def __init__(self, config_path: str):
             # Timestamp in UTC
             self.timestamp = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%S%Z")
+
+            # STK version
+            self.deployed_with = f"stk-{VERSION}"
 
             # Config git HEAD state
             try:
