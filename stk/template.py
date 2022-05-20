@@ -1,5 +1,8 @@
 from __future__ import annotations
+
 import hashlib
+import re
+
 from typing import List
 from cfn_tools import load_yaml
 from jinja2 import Environment, StrictUndefined
@@ -111,6 +114,13 @@ class Template:
         # This will fail if rendered template can't be processed via Jinja2 (e.g. undefined variable access etc)
         try:
             content = env.from_string(source=raw_template).render(vars)
+
+            # "@@{{ some expression }}@@" is the same as {{ some expression }}
+            #
+            # Helps workaround YAML formatting when editing unquoted {{ jinja expression }}
+            #
+            content = re.sub(r'"@@(.*)@@"', r"\g<1>", content)
+
             return RenderedTemplate(name=self.name, content=content)
         except (BaseException, ValueError) as ex:
             template = FailedTemplate(name=self.name, source=(content or raw_template), location=str(self.provider), error=ex)

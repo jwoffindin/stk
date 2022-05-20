@@ -62,3 +62,11 @@ class TestTemplate(Fixtures):
 
         assert type(rendered) == FailedTemplate
         assert "Error occurred outsite of template" in str(rendered)
+
+    @mark.parametrize("provider", ["quoted.yaml"], indirect=True)
+    def test_render_quoted_template(self, provider):
+        t = Template(name="quoted", provider=provider, helpers=None)
+
+        rendered = t.render(vars={})
+
+        assert "value: ['hello', 'there']" in str(rendered)
