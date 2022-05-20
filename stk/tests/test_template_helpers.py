@@ -25,7 +25,7 @@ class TestTemplateHelpers(StackFixtures):
         return FakeEnvironment()
 
     @fixture
-    def config(self):
+    def config(self, sts):
         return Config("main", environment="test", config_path=self.fixture_path("custom_helpers", "config"))
 
     @fixture

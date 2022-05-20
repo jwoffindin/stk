@@ -18,16 +18,6 @@ class Fixtures:
         return open(self.fixture_path(*dir), "rb").read()
 
 
-class ConfigFixtures(Fixtures):
-    @fixture
-    def config(self, request):
-        return Config("main", environment="test", config_path=self.fixture_path("config", request.param))
-
-    @fixture
-    def config_file(self, request):
-        return ConfigFile("main.yaml", self.fixture_path("config", request.param))
-
-
 class StackFixtures(Fixtures):
     @fixture
     def aws(self):
@@ -65,3 +55,13 @@ class StackFixtures(Fixtures):
     @fixture
     def stack(self, cloudformation, s3, aws):
         yield Stack(aws=aws, name="test-stack")
+
+
+class ConfigFixtures(StackFixtures):
+    @fixture
+    def config(self, request, sts):
+        return Config("main", environment="test", config_path=self.fixture_path("config", request.param))
+
+    @fixture
+    def config_file(self, request, sts):
+        return ConfigFile("main.yaml", self.fixture_path("config", request.param))

@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 
 import boto3
+import logging
+
+log = logging.getLogger("aws_config")
 
 
 @dataclass
@@ -12,11 +15,20 @@ class AwsSettings:
 
     def client(self, service):
         session = self._session()
+        log.info(f"client({service}), account_id={self.account_id}")
         return session.client(service, region_name=self.region)
 
     def resource(self, service):
         session = self._session()
+        log.info(f"resource({service}), account_id={self.account_id}")
         return session.resource(service, region_name=self.region)
+
+    def get_account_id(self):
+        """
+        Ensure account-id has been retrieved
+        """
+        self._session()
+        return self.account_id
 
     def _session(self):
         session = boto3.Session(profile_name=self.profile)

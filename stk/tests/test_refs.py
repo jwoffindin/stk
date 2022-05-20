@@ -11,7 +11,7 @@ from ..template import RenderedTemplate
 
 class TestStackRefs(ConfigFixtures, StackFixtures):
     @fixture
-    def config(self):
+    def config(self, sts):
         return Config("main", environment="dev", config_path=self.fixture_path("refs", "config"))
 
     @fixture

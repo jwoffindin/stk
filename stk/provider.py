@@ -98,6 +98,9 @@ class GitProvider(GenericProvider):
 
         logging.debug(f"GitProvider(name={self.name}, url={self.git_url}, root={self.root})")
 
+        if not self.git_url:
+            raise Exception("template.git_url is not set")
+
         if self.git_url.startswith(".") or self.git_url.startswith("/"):
             # Local repository (e.g. ../templates)
             self.repo = Repo(self.git_url)

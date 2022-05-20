@@ -2,7 +2,7 @@ import os
 import pytest
 
 
-from . import ConfigFixtures
+from . import ConfigFixtures, StackFixtures
 from ..config import Config
 
 
@@ -92,7 +92,7 @@ class TestTags(ConfigFixtures):
 
 
 @pytest.mark.parametrize("config", ["core"], indirect=True)
-class TestEnvironmentalPrecdenceConfig(ConfigFixtures):
+class TestEnvironmentalPrecedenceConfig(ConfigFixtures):
     def test_stack_name(self, config):
         assert config.core.stack_name == "forced-stack-name"
 
@@ -123,3 +123,20 @@ class TestInterpolatedDict(ConfigFixtures):
     def test_none_preserved(self, config):
         assert config.vars["a_none"] == None
         assert config.vars["no_value"] == None
+
+
+@pytest.mark.parametrize("config", ["simple"], indirect=True)
+class TestSimpleConfig(ConfigFixtures):
+    def test_simple_load_vars(self, config):
+        assert set(config.vars.keys()) >= set(["foo", "bar"])
+        assert config.var("bar") == "hello, world!"
+
+    def test_simple_load_params(self, config):
+        assert list(config.params.keys()) == ["jane"]
+        assert config.param("jane") == 'Jane said "hello, world!"'
+
+
+@pytest.mark.parametrize("config", ["simple"], indirect=True)
+class TestSimpleConfig(ConfigFixtures):
+    def test_aws_vars(self, config, aws, sts):
+        assert config.vars["account_id"] == 123456789012

@@ -262,6 +262,7 @@ class Config:
         try:
             aws_settings = self.InterpolatedDict(includes.fetch_dict("aws", environment), {"environment": environment})
             self.aws = AwsSettings(**aws_settings)
+            self.aws.get_account_id()  # force retrieval of account_id
         except TypeError as ex:
             raise Exception(f"Unable to parse aws settings: have {aws_settings}: {ex}")
 
@@ -277,13 +278,14 @@ class Config:
         self.deploy = self.DeployMetadata()
 
         default_vars = {
-            "name": name,
-            "environment": environment,
-            "deploy": self.deploy,
-            "refs": self.refs,
-            "environ": os.environ,
-            "cfn_bucket": self.aws.cfn_bucket,
             "__config_dir": pathlib.Path(config_path),
+            "account_id": self.aws.account_id,
+            "cfn_bucket": self.aws.cfn_bucket,
+            "deploy": self.deploy,
+            "environ": os.environ,
+            "environment": environment,
+            "name": name,
+            "refs": self.refs,
         }
         self.vars = self.Vars(includes.fetch_dict("vars", environment, default_vars))
 
@@ -310,7 +312,6 @@ class Config:
 
         # Ugly hack. Need to come up with something better after I've had a coffee
         self.vars["stack_name"] = self.core.stack_name
-        self.vars["account_id"] = self.aws.account_id
 
         # perform final linting/validation
         includes.validate(self)

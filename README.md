@@ -59,7 +59,7 @@ The two key benefits of using `stk` for CloudFormation management.
 
 * Decouple CloudFormation templates from configuration. This simplifies multi-environment and allows you to build up a
   library of reusable components.
-* Reduce risk from updates. Use of Jinja2 for templates and use of "variables" over "parameters" (more later) mean
+* Reduce change risk through improvded visibility. Use of Jinja2 for templates and use of explicit configuration (directly interpolated variables) over implicit configuration (AWS parameters) (more later) mean
   you can see exactly what is going to change.
 
 
@@ -80,9 +80,14 @@ The two key benefits of using `stk` for CloudFormation management.
 
 Quick start:
 
+    # Install STK
     pip install https://github.com/jwoffindin/stk.git
-    stk-init my-project sns
+
+    # Bootstrap your project
+    stk-init my-project
     cd my-project
+
+    # Deploy a stack
     stk create sns dev
 
 

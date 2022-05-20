@@ -9,7 +9,7 @@ from ..config import Config
 
 class TestStackRefs(ConfigFixtures):
     @fixture
-    def config(self):
+    def config(self, sts):
         return Config("main", environment="test", config_path=self.fixture_path("deploy-metadata", "config"))
 
     @fixture
