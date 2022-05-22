@@ -31,7 +31,11 @@ class AwsSettings:
         return self.account_id
 
     def _session(self):
-        session = boto3.Session(profile_name=self.profile)
+        if self.profile:
+            session = boto3.Session(profile_name=str(self.profile))
+        else:
+            session = boto3.Session()
+
         if not hasattr(self, "_checked_account"):
             sts = session.client("sts")
             account_id = sts.get_caller_identity()["Account"]
