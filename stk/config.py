@@ -282,14 +282,6 @@ class Config:
         except TypeError as ex:
             raise Exception(f"Unable to parse aws settings: have {aws_settings}: {ex}")
 
-        # Stack 'refs' object references external stacks. They are intended to be resolved by 'vars'/'params' so need to be
-        # loaded first
-        try:
-            refs = self.InterpolatedDict(includes.fetch_dict("refs", environment), {"environment": environment})
-            self.refs = self.StackRefs(refs, self)
-        except Exception as ex:
-            raise Exception("Unable to parse stack refs (refs:). have {refs}: {ex}")
-
         default_vars = {
             "__config_dir": pathlib.Path(config_path),
             "account_id": self.aws.account_id,
@@ -297,20 +289,34 @@ class Config:
             "environ": os.environ,
             "environment": environment,
             "name": name,
-            "refs": self.refs,
         }
-        self.vars = self.Vars(includes.fetch_dict("vars", environment, default_vars))
 
+        # Core settings impact the behavior of 'stk' - e.g. stack name, valid environments
+        # etc.
+        self.core = self.CoreSettings(
+            **self.InterpolatedDict(
+                includes.fetch_dict("core", environment, self.CoreSettings.DEFAULTS),
+                default_vars,
+            )
+        )
+
+        # Ugly hack. Need to come up with something better after I've had a coffee
+        default_vars["stack_name"] = self.core.stack_name
+
+        # Stack 'refs' object references external stacks. They are intended to be resolved by 'vars'/'params' so need to be
+        # loaded first
+        try:
+            refs = self.InterpolatedDict(includes.fetch_dict("refs", environment), {"environment": environment})
+            self.refs = self.StackRefs(refs, self)
+        except Exception as ex:
+            raise Exception("Unable to parse stack refs (refs:). have {refs}: {ex}")
+        default_vars["refs"] = self.refs
+
+        self.vars = self.Vars(includes.fetch_dict("vars", environment, default_vars))
         self.params = self.InterpolatedDict(includes.fetch_dict("params", environment), self.vars)
         self.tags = self.Tags(includes.fetch_dict("tags", environment), self.vars)
 
         self.helpers = list(includes.fetch_set("helpers", environment))
-        self.core = self.CoreSettings(
-            **self.InterpolatedDict(
-                includes.fetch_dict("core", environment, self.CoreSettings.DEFAULTS),
-                self.vars,
-            )
-        )
 
         template_source = self.InterpolatedDict(
             includes.fetch_dict(
@@ -332,9 +338,6 @@ class Config:
                 template_source["root"] = template_path
 
         self.template_source = TemplateSource(**template_source)
-
-        # Ugly hack. Need to come up with something better after I've had a coffee
-        self.vars["stack_name"] = self.core.stack_name
 
         # Deploy metadata is used to track deploys back to version controlled config/templates.
         self.vars["deploy"] = self.DeployMetadata(config_path=config_path)
