@@ -87,7 +87,7 @@ class StackWaiter:
                         self.console.log(response["Error"]["Message"])
 
                 waiter = self.wrap_waiter(waiter, waiter_callback)
-                waiter.wait(WaiterConfig={"Delay": 2}, StackName=self.stack.name)
+                waiter.wait(WaiterConfig={"Delay": 2, "MaxAttempts": 1800}, StackName=self.stack.name)
 
                 # Perform a final update so the status table reflects end state
                 live.update(self.refresh_table())
