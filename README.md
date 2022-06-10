@@ -377,9 +377,60 @@ Jinja2 variables/values passed to the template.
 Preferred way to manage configuration - e.g. use template conditions rather than 'native' AWS Template Conditions - they are unwieldy and can make changes hard to reason about.
 
 
-### `refs:`
+### `refs:` - Referencing other stack outputs
 
-References to other stacks. E.g. feeding in outputs from another stack into this one.
+Use the `refs:` section to retrieve outputs from other stacks.
+
+For example, if you have another stack deployed which you need to
+retieve values from (e.g. subnet IDs from a VPC stack), you can
+do something like:
+
+```yaml
+refs:
+  vpc:
+
+vars:
+  subnets: "{{ refs.vpc.Subnets }}"
+```
+
+will pass in a list of subnets to the template.
+
+#### Optional references
+
+Some stacks may be optional. A referenced output will return nil/blank value
+if the stack doesn't exist.
+
+For example:
+
+```yaml
+refs:
+  an_optional_stack:
+    optional: True
+
+vars:
+  some_optional_var: "{{ refs.an_optional_stack.SomeOutput }}"
+```
+
+in this case, `some_optional_var` will be set iff the referenced stack exists, otherwise it is set to `nil`.
+
+#### Overriding stack names
+
+Normally, external stack will found using standard `stk` naming convention (`$environment-$stack_name`).
+
+You can override this when needing to reference a stack that does not
+follow this convernsion using the `stack_name` attribute.
+
+Like all `refs:` settings, you can set this on a per-environment basis if required:
+
+```yaml
+environments:
+  prod:
+    vars:
+      foo: "{{ refs.some_stack.OtherOutput }}"
+    refs:
+      some_stack:
+        stack_name: "some-weirdly-named-stack"
+```
 
 ### `tags:`
 Tags that are applied to the stack (and thus resources within the stack)
@@ -462,8 +513,6 @@ configuration file must explicitly declare any helpers here.
 
 Configuration that changes behavior of the 'stk' application rather configuration/template
 deployment.
-```
-
 
 ## Usage
 
