@@ -11,10 +11,8 @@ import tempfile
 import time
 import logging
 
-from typing import IO
 from dataclasses import dataclass
 from importlib import util as importutil
-from io import BytesIO
 from jinja2 import Environment
 from os import path
 from pathlib import Path
@@ -82,6 +80,7 @@ class TemplateHelpers:
         # Core helpers
         g["resourcify"] = self.resourcify
         g["lambda_uri"] = self.lambda_uri
+        g["lambda_code"] = self.lambda_code
         g["user_data"] = self.user_data
         g["include_file"] = self.include_file
         g["upload_zip"] = self.upload_zip
@@ -109,6 +108,14 @@ class TemplateHelpers:
 
         zipped = self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path))
         return self.bucket.upload(zipped).as_s3()
+
+    def lambda_code(self, name: str) -> dict:
+        lambda_path = path.join("functions", name)
+
+        zipped = self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path))
+        uploaded = self.bucket.upload(zipped)
+
+        return {"S3Bucket": uploaded.bucket.bucket_name, "S3Key": uploaded.key}
 
     def ignore_list(self, p: str):
         provider = self.provider
