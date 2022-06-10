@@ -6,3 +6,4 @@ __pycache__
 .testmondata
 .template-cache
 *.log
+*.swp
