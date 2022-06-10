@@ -42,12 +42,15 @@ class StackWaiter:
         def waiter_callback(response):
             if "Stacks" in response:
                 s = response["Stacks"][0]
-                status.update(s["StackStatus"])
+                # status.update(s["StackStatus"])
+                print(s["StackStatus"])
             elif "Error" in response:
-                status.update(response["Error"]["Message"])
+                # status.update(response["Error"]["Message"])
+                print(response["Error"]["Message"])
+                pass
 
-        waiter = self.wrap_waiter(waiter, waiter_callback)
-        waiter.wait(WaiterConfig={"Delay": 5}, StackName=self.stack.name, ChangeSetName=change_set.name)
+        wrapped_waiter = self.wrap_waiter(waiter, waiter_callback)
+        wrapped_waiter.wait(WaiterConfig={"Delay": 5, "MaxAttempts": 720}, StackName=self.stack.name, ChangeSetName=change_set.name)
 
     def wait_for_stack(self, waiter_name, resources: dict = None):
         """

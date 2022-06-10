@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import functools
+import typing
 import click
-import botocore
 import boto3
 import json
 import yaml
@@ -21,7 +21,8 @@ from rich.panel import Panel
 from . import VERSION
 from .config import Config
 from .stack import Stack
-from .template import TemplateWithConfig, Template
+from .template import TemplateWithConfig
+from .change_set import ChangeSet
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 

@@ -18,6 +18,7 @@ from io import BytesIO
 from jinja2 import Environment
 from os import path
 from pathlib import Path
+from typing import IO
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 from .human_bytes import HumanBytes
