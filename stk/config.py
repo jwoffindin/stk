@@ -285,6 +285,7 @@ class Config:
         default_vars = {
             "__config_dir": pathlib.Path(config_path),
             "account_id": self.aws.account_id,
+            "aws_region": self.aws.region,
             "cfn_bucket": self.aws.cfn_bucket,
             "environ": os.environ,
             "environment": environment,
