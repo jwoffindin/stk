@@ -11,12 +11,10 @@ import yaml
 
 from dataclasses import dataclass
 from os import environ
-from pytest import fail
 from rich.console import Console
 from rich.table import Table
 from rich.prompt import Confirm
 from rich.padding import Padding
-from rich.panel import Panel
 
 from . import VERSION
 from .config import Config
@@ -33,9 +31,20 @@ class StackDelegatedCommand:
     environment: str
     config_path: str
     template_path: str
+    var: typing.List
+    param: typing.List
 
     def __post_init__(self):
-        self.config = Config(name=self.name, environment=self.environment, config_path=self.config_path, template_path=self.template_path)
+        vars = parse_overrides(self.var)
+        params = parse_overrides(self.param)
+        self.config = Config(
+            name=self.name,
+            environment=self.environment,
+            config_path=self.config_path,
+            template_path=self.template_path,
+            var_overrides=vars,
+            param_overrides=params,
+        )
         self.stack = Stack(aws=self.config.aws, name=self.config.core.stack_name)
         self.stack_name = self.stack.name
 
@@ -90,6 +99,8 @@ def common_stack_params(func):
     @click.argument("environment")
     @click.option("--config-path", default=environ.get("CONFIG_PATH", "."), help="Path to config project")
     @click.option("--template-path", default=environ.get("TEMPLATE_PATH", "."), help="Path to templates")
+    @click.option("--var", help="override configuration variable", multiple=True)
+    @click.option("--param", help="override CFN parameter", multiple=True)
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
@@ -330,8 +341,8 @@ def outputs(**kwargs):
 
 @stk.command()
 @common_stack_params
-def show_config(name: str, environment: str, config_path: str, template_path: str):
-    config = Config(name=name, environment=environment, config_path=config_path)
+def show_config(name: str, environment: str, config_path: str, template_path: str, var: typing.List, param: typing.List):
+    config = Config(name=name, environment=environment, config_path=config_path, var_overrides=parse_overrides(var), param_overrides=parse_overrides(param))
 
     template = config.template_source
     template_table = Table("Property", "Value", title="Template Source")
@@ -355,6 +366,22 @@ def show_config(name: str, environment: str, config_path: str, template_path: st
     console.print(template_table, "\n")
     console.print(params_table, "\n")
     console.print(vars_table, "\n")
+
+
+def parse_overrides(overrides: typing.List):
+    ret_val = {}
+    for v in overrides:
+        key, value = v.split("=", 1)
+        try:
+            # try parsing value as a JSON object. E.g. user can do --var 'foo=[123]'
+            parsed_value = json.loads(value)
+        except json.JSONDecodeError:
+            # value passed may not have been json, e.g. user may have just done
+            # --var foo=bar ; shortcut for having to do --var 'foo="bar"'
+            parsed_value = value
+        ret_val[key] = parsed_value
+
+    return ret_val
 
 
 if __name__ == "__main__":

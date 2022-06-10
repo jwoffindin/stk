@@ -314,7 +314,11 @@ class Config:
         default_vars["refs"] = self.refs
 
         self.vars = self.Vars(includes.fetch_dict("vars", environment, default_vars))
+        self.vars.update(var_overrides)
+
         self.params = self.InterpolatedDict(includes.fetch_dict("params", environment), self.vars)
+        self.params.update(param_overrides)
+
         self.tags = self.Tags(includes.fetch_dict("tags", environment), self.vars)
 
         self.helpers = list(includes.fetch_set("helpers", environment))
