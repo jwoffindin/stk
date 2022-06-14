@@ -281,8 +281,15 @@ def delete(yes: bool, **kwargs):
 @common_stack_params
 @click.option("--format", default="yaml", help="Force conversion of resulting template (json or yaml)")
 @click.option("--output-file", default="", help="Write resulting template to file")
-def show_template(name: str, environment: str, config_path: str, template_path: str, format: str, output_file: str):
-    config = Config(name=name, environment=environment, config_path=config_path, template_path=template_path)
+def show_template(name: str, environment: str, config_path: str, template_path: str, format: str, output_file: str, var: typing.List, param: typing.List):
+    config = Config(
+        name=name,
+        environment=environment,
+        config_path=config_path,
+        template_path=template_path,
+        var_overrides=parse_overrides(var),
+        param_overrides=parse_overrides(param),
+    )
     template = TemplateWithConfig(provider=config.template_source.provider(), config=config)
 
     result = template.render()
