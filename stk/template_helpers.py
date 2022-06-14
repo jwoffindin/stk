@@ -140,7 +140,7 @@ class TemplateHelpers:
 
         # Jinja2 evaluation requires any referenced variables be defined
         # to avoid hard-to-detect failures.
-        env = jinja2.Environment(undefined=jinja2.StrictUndefined)
+        env = jinja2.Environment(line_statement_prefix="##", undefined=jinja2.StrictUndefined)
 
         # context for template evalation is 'config.vars' plus any additional
         # parameters passed. E.g.
@@ -187,7 +187,7 @@ class TemplateHelpers:
         return final_tags.to_list(extra_attributes=extra_attributes)
 
     def include_file(self, include_file_name, padding=8, prefix="\n", **extra_vars) -> str:
-        env = Environment(undefined=jinja2.StrictUndefined)
+        env = Environment(line_statement_prefix="##", undefined=jinja2.StrictUndefined)
 
         content = self.provider.content(path.join("files", include_file_name))
         template = env.from_string(source=str(content, "utf-8"))
