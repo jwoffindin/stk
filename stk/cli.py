@@ -153,6 +153,7 @@ def create(yes: bool, **kwargs):
         exit(-2)
 
     if yes or Confirm.ask(f"Create stack {sc.stack_name} ?"):
+        c.rule()
         c.log(f"Applying change set")
         change_set.execute()
         if sc.wait("stack_create_complete", change_set.resources()):
@@ -190,6 +191,7 @@ def update(yes: bool, **kwargs):
         exit(-2)
 
     if yes or Confirm.ask(f"Update stack {sc.stack_name} ?"):
+        c.rule()
         c.log(f"Applying change set")
 
         change_set.execute()
@@ -272,6 +274,8 @@ def delete(yes: bool, **kwargs):
     if not (yes or Confirm.ask(f"Delete stack {sc.stack_name} ?")):
         c.log("Aborting")
         exit(-2)
+
+    c.rule()
     c.log(f"Destroying stack {sc.stack_name}")
     sc.delete()
     c.log("Stack deleted")
