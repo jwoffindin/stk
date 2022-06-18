@@ -313,15 +313,17 @@ class Config:
             raise Exception("Unable to parse stack refs (refs:). have {refs}: {ex}")
         default_vars["refs"] = self.refs
 
-        self.vars = self.Vars(includes.fetch_dict("vars", environment, default_vars))
-        self.vars.update(var_overrides)
+        self.helpers = list(includes.fetch_set("helpers", environment))
 
-        self.params = self.InterpolatedDict(includes.fetch_dict("params", environment), self.vars)
-        self.params.update(param_overrides)
+        pre_vars = includes.fetch_dict("vars", environment, default_vars)
+        pre_vars.update(var_overrides)
+        self.vars = self.Vars(pre_vars)
+
+        params = includes.fetch_dict("params", environment)
+        params.update(param_overrides)
+        self.params = self.InterpolatedDict(params, self.vars)
 
         self.tags = self.Tags(includes.fetch_dict("tags", environment), self.vars)
-
-        self.helpers = list(includes.fetch_set("helpers", environment))
 
         template_source = self.InterpolatedDict(
             includes.fetch_dict(
