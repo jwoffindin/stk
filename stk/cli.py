@@ -72,6 +72,7 @@ class TemplateCommand(StackDelegatedCommand):
         parse_error = self.template.error
         if parse_error:
             c.log(f":x: Template is NOT ok - {parse_error}", style="red")
+            c.print(str(self.template))
             exit(-1)
 
     def validate(self):
@@ -81,6 +82,7 @@ class TemplateCommand(StackDelegatedCommand):
             if errors:
                 c.log(f"{errors}\n\n", style="red")
                 c.log(":x: Template is NOT ok - failed validation", style="red")
+                c.print(str(self.template))
                 exit(-1)
             else:
                 c.log(":+1: Template is ok", style="green")
