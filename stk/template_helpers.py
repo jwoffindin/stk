@@ -85,6 +85,7 @@ class TemplateHelpers:
         g["include_file"] = self.include_file
         g["upload_zip"] = self.upload_zip
         g["tags"] = self.tags
+        g["resource_cidr"] = self.resource_cidr
 
         # Custom helpers (defined in templates/helpers and specified in config via 'helpers' stanza)
         for name, func in self.custom_helpers.items():
@@ -185,6 +186,20 @@ class TemplateHelpers:
     def tags(self, extra_attributes={}, **tags):
         final_tags = Config.Tags({**self.config.tags, **tags}, {})
         return final_tags.to_list(extra_attributes=extra_attributes)
+
+    def resource_cidr(self, resource_id):
+        """
+        Find CIDR for subnet or VPC (AWS resources with a CIDR associated), otherwise
+        just returns resource_id.
+        """
+        ec2 = self.aws.resource("ec2")
+        if resource_id.startswith("subnet-"):
+            return ec2.Subnet(resource_id).cidr_block
+        elif resource_id.startswith("vpc-"):
+            return ec2.Vpc(resource_id).cidr_block
+        else:
+            # Maybe passed in a CIDR already
+            return resource_id
 
     def include_file(self, include_file_name, padding=8, prefix="\n", **extra_vars) -> str:
         env = Environment(line_statement_prefix="##", undefined=jinja2.StrictUndefined)
