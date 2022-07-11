@@ -38,7 +38,7 @@ class Config:
         environments: list = None
 
         # DEFAULTS are pre-interpolation values so can't set them via attributes
-        DEFAULTS = {"stack_name": "{{ environment }}-{{ name }}"}
+        DEFAULTS = {"stack_name": "{{ environment }}-{{ name.replace('/', '-') }}"}
 
         # stack name
         valid_stack_name = re.compile("^[a-zA-Z0-9-]+$").match
@@ -329,7 +329,7 @@ class Config:
             includes.fetch_dict(
                 "template",
                 environment,
-                {"name": name, "root": None},
+                {"name": name.replace("/", "-"), "root": None},
             ),
             self.vars,
         )
