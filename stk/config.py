@@ -229,12 +229,17 @@ class Config:
 
     @dataclass
     class DeployMetadata:
-        def __init__(self, config_path: str):
+        def __init__(self, config_path: str, template_source: TemplateSource):
             # Timestamp in UTC
             self.timestamp = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%S%Z")
 
             # STK version
             self.deployed_with = f"stk-{VERSION}"
+
+            if template_source.repo:
+                self.template = "/".join([template_source.repo, template_source.root, template_source.name])
+            else:
+                self.template = "/".join([template_source.root, template_source.name])
 
             # Config git HEAD state
             try:
@@ -346,7 +351,9 @@ class Config:
         self.template_source = TemplateSource(**template_source)
 
         # Deploy metadata is used to track deploys back to version controlled config/templates.
-        self.vars["deploy"] = self.DeployMetadata(config_path=config_path)
+        self.vars["deploy"] = self.DeployMetadata(config_path=config_path, template_source=self.template_source)
+
+        self.tags = self.Tags(includes.fetch_dict("tags", environment), self.vars)
 
         # perform final linting/validation
         includes.validate(self)
