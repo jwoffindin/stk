@@ -100,7 +100,7 @@ class TemplateHelpers:
         """
         Given a string with non-alphanumeric characters, maps to a string that can be used as an AWS Resource name.
         """
-        return re.sub(r"(\A|\W)+(\w)", lambda m: m.group(2).upper(), str(name))
+        return re.sub(r"(\A|\W)+(\w)", lambda m: m.group(2).upper(), re.sub(r"(_|-)+", " ", str(name))).replace(" ", "")
 
     IGNORE_FILE = ".package-ignore"
 
