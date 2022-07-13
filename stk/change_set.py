@@ -19,12 +19,18 @@ class ChangeSet:
         self.name = name
         self.cfn = stack.cfn
 
-    def create(self, template: RenderedTemplate, change_set_type: str, tags: List(str)):
+    def create(self, template: RenderedTemplate, change_set_type: str, tags: List(str), params: dict):
         stack = self.stack
         template_url = stack.bucket.upload(template).as_http()
+
+        parameters = []
+        for key, value in params.items():
+            parameters.append({"ParameterKey": key, "ParameterValue": value})
+
         self.cfn.create_change_set(
             StackName=stack.name,
             TemplateURL=template_url,
+            Parameters=parameters,
             ChangeSetName=self.name,
             ChangeSetType=change_set_type,
             Capabilities=template.iam_capabilities(),

@@ -90,7 +90,8 @@ class TemplateCommand(StackDelegatedCommand):
     def create_change_set(self, change_set_name=None) -> ChangeSet:
         with c.status("Creating change set"):
             tags = self.config.tags.to_list()
-            cs = self.stack.create_change_set(template=self.template, tags=tags, change_set_name=change_set_name)
+            params = self.config.params
+            cs = self.stack.create_change_set(template=self.template, tags=tags, change_set_name=change_set_name, params=params)
         return cs
 
 

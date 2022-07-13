@@ -322,8 +322,7 @@ class Config:
         params = includes.fetch_dict("params", environment)
         params.update(param_overrides)
         self.params = self.InterpolatedDict(params, self.vars)
-
-        self.tags = self.Tags(includes.fetch_dict("tags", environment), self.vars)
+        self.vars["params"] = self.params
 
         template_source = self.InterpolatedDict(
             includes.fetch_dict(
