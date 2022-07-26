@@ -115,7 +115,7 @@ def common_stack_params(func):
 @click.version_option(version=VERSION)
 def stk():
     global c
-    c = Console()
+    c = Console(emoji=False)
 
     log_level = environ.get("LOG_LEVEL", None)
     if log_level:
