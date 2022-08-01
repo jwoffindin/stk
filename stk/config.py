@@ -9,6 +9,7 @@ import git
 from dataclasses import dataclass
 from datetime import datetime
 from jinja2 import Environment, StrictUndefined
+from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from sys import exc_info
@@ -263,6 +264,8 @@ class Config:
         var_overrides: dict = {},
         param_overrides: dict = {},
     ):
+        # While we should just receive `name`, we may be be passed
+        name = str(Path(name).with_suffix(""))
         self.name = name
         self.environment = environment
         self.config_path = config_path
