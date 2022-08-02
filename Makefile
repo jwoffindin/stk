@@ -12,3 +12,9 @@ test:
 
 make test_loop:
 	source .venv/bin/activate && ptw --runner "pytest --picked --testmon --maxfail=1"
+
+docker:
+	docker build -t johnwo/stk .
+
+docker-run:
+	docker run --rm -it -v ~/.aws:/root/.aws -v ${TEMPLATE_PATH}:/templates -v ${CONFIG_PATH}:/config johnwo/stk:latest bash

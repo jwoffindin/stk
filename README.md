@@ -57,21 +57,19 @@ STK provides an opinionated framework for managing AWS infrastructure with Cloud
 
 The two key benefits of using `stk` for CloudFormation management.
 
-* Decouple CloudFormation templates from configuration. This simplifies multi-environment and allows you to build up a
-  library of reusable components.
-* Reduce change risk through improvded visibility. Use of Jinja2 for templates and use of explicit configuration (directly interpolated variables) over implicit configuration (AWS parameters) (more later) mean
-  you can see exactly what is going to change.
+* Decouple CloudFormation templates from configuration. This simplifies multi-environment and allows you to build up a library of reusable components.
+* Reduce change risk through improvded visibility. Use of Jinja2 for templates and use of explicit configuration (directly interpolated variables) over implicit configuration (AWS parameters) (more later) mean you can see exactly what is going to change.
+### Local installation (Python/Pip)
 
+Requires python 3.10+
 
-### Prerequisites
+    # Install STK via pip
+    pip install git+https://github.com/jwoffindin/stk.git
 
-* Python 3.8+
+### Docker
 
-### Installation
+    alias cfn="docker run --rm -it -v ~/.aws:/root/.aws -v $TEMPLATE_PATH:/templates -v $CONFIG_PATH:/config johnwo/stk:latest"
 
-* `pip3 install stk`
-* `pyenv init .env`
-* `source ~/.env/bin/activate`
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -79,13 +77,6 @@ The two key benefits of using `stk` for CloudFormation management.
 ## Getting started
 
 Quick start:
-
-    # Install STK
-    pip install https://github.com/jwoffindin/stk.git
-
-    # Bootstrap your project
-    stk-init my-project
-    cd my-project
 
     # Deploy a stack
     stk create sns dev
