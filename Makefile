@@ -1,3 +1,7 @@
+VERSION=0.1.0
+
+default:
+	echo "try `make setup test`"
 setup:
 	python3 -m venv .venv
 	python3 -m pip install --upgrade pip setuptools wheel
@@ -13,8 +17,13 @@ test:
 make test_loop:
 	source .venv/bin/activate && ptw --runner "pytest --picked --testmon --maxfail=1"
 
-docker:
-	docker build -t johnwo/stk .
+docker-build:
+	docker build --build-arg VERSION=$(VERSION) -t johnwo/stk .
 
 docker-run:
 	docker run --rm -it -v ~/.aws:/root/.aws -v ${TEMPLATE_PATH}:/templates -v ${CONFIG_PATH}:/config johnwo/stk:latest bash
+
+docker-release: docker-build
+	docker tag johnwo/stk:latest johnwo/stk:$(VERSION)
+	docker push johnwo/stk:latest
+	docker push johnwo/stk:$(VERSION)

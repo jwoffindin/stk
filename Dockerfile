@@ -1,6 +1,8 @@
 FROM python:3.10
 
-RUN pip install git+https://github.com/jwoffindin/stk.git
+ARG VERSION
+
+RUN pip install git+https://github.com/jwoffindin/stk.git@$VERSION
 
 ENV CONFIG_PATH=/config
 ENV TEMPLATE_PATH=/templates
