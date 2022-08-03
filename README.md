@@ -68,7 +68,7 @@ Requires python 3.10+
 
 ### Docker
 
-    alias cfn="docker run --rm -it -v ~/.aws:/root/.aws -v $TEMPLATE_PATH:/templates -v $CONFIG_PATH:/config johnwo/stk:latest"
+    alias cfn="docker run --rm -it -v ~/.aws:/root/.aws -v ~/.ssh:/root/.ssh -v $TEMPLATE_PATH:/templates -v $CONFIG_PATH:/config johnwo/stk:latest"
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
