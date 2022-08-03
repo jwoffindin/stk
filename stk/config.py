@@ -284,7 +284,7 @@ class Config:
 
         # Most other config supports pulling stuff from AWS, so initialize this first
         try:
-            aws_settings = self.InterpolatedDict(includes.fetch_dict("aws", environment), {"environment": environment})
+            aws_settings = self.InterpolatedDict(includes.fetch_dict("aws", environment), {"environ": os.environ, "environment": environment})
             self.aws = AwsSettings(**aws_settings)
             self.aws.get_account_id()  # force retrieval of account_id
         except TypeError as ex:
