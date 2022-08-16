@@ -48,7 +48,10 @@ class ConfigFiles(list):
 
 
 class ConfigFile(dict):
-    EXPECTED_KEYS = ["aws", "core", "environments", "helpers", "includes", "params", "refs", "tags", "template", "vars"]
+    EXPECTED_KEYS = set(["aws", "core", "environments", "helpers", "includes", "params", "refs", "tags", "template", "vars"])
+
+    # almost all keys can appear under 'environments:'... except environments
+    EXPECTED_ENV_KEYS = EXPECTED_KEYS - set(['environments'])
 
     def __init__(self, filename: str, config_dir: str):
         self.config_dir = config_dir
@@ -76,7 +79,7 @@ class ConfigFile(dict):
 
         # check that an environment matching one of the reserved keys isn't defined - highly
         # likely that user has fat-fingered their config
-        reserved_env_errors = set(self.EXPECTED_KEYS) & set(self["environments"].keys())
+        reserved_env_errors = self.EXPECTED_KEYS & set(self["environments"].keys())
         if reserved_env_errors:
             raise Exception(f"{self.filename} has defined environments {reserved_env_errors}; these are reserved")
 
@@ -87,10 +90,16 @@ class ConfigFile(dict):
         """
         Ensure config file only contains expected keys
         """
-        unknown_keys = set(self.keys()) - set(self.EXPECTED_KEYS)
+        unknown_keys = set(self.keys()) - self.EXPECTED_KEYS
 
         if unknown_keys:
             raise Exception(f"Config file {self.filename} has unexpected keys: {unknown_keys}")
+
+        for env_name, env_settings in self["environments"].items():
+            if env_settings:  # handle case with blank environment
+                unknown_env_keys = set(env_settings.keys()) - self.EXPECTED_ENV_KEYS
+                if unknown_env_keys:
+                    raise Exception(f"Config file {self.filename} environments.{env_name} has unexpected keys: {unknown_env_keys}")
 
     def environments(self) -> list:
         """
