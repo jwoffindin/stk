@@ -41,7 +41,7 @@ class AwsSettings:
             account_id = sts.get_caller_identity()["Account"]
             if self.account_id:
                 if str(account_id) != str(self.account_id):
-                    raise Exception(f"Incorrect AWS Account - exected {self.account_id}, but appear to be using {account_id} ")
+                    raise Exception(f"Incorrect AWS Account - expected {self.account_id}, but appear to be using {account_id} ")
 
             self._checked_account = True
             self.account_id = account_id
