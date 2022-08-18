@@ -266,7 +266,7 @@ class Config:
     ):
         # While we should just receive `name`, we may be be passed
         name = str(Path(name).with_suffix(""))
-        self.name = name
+        self.name = name.replace('/', '-')
         self.environment = environment
         self.config_path = config_path
 
@@ -297,7 +297,7 @@ class Config:
             "cfn_bucket": self.aws.cfn_bucket,
             "environ": os.environ,
             "environment": environment,
-            "name": name,
+            "name": self.name,
         }
 
         # Core settings impact the behavior of 'stk' - e.g. stack name, valid environments
