@@ -136,6 +136,9 @@ def validate(**kwargs):
 @common_stack_params
 @click.option("--yes", is_flag=True, show_default=True, default=False, help="Automatically approve changeset")
 def create(yes: bool, **kwargs):
+    """
+    Create a new stack
+    """
     sc = TemplateCommand(**kwargs)
     if sc.exists():
         c.log(f"Stack {sc.stack_name} already exists", style="red")
@@ -175,6 +178,9 @@ def create(yes: bool, **kwargs):
 @common_stack_params
 @click.option("--yes", is_flag=True, show_default=True, default=False, help="Automatically approve changeset")
 def update(yes: bool, **kwargs):
+    """
+    Update an existing stack via changeset
+    """
     sc = TemplateCommand(**kwargs)
 
     if not sc.exists():
@@ -224,6 +230,9 @@ def upsert(yes: bool, **kwargs):
 @common_stack_params
 @click.argument("change_set_name")
 def create_change_set(change_set_name: str, **kwargs):
+    """
+    Create named changeset
+    """
     sc = TemplateCommand(**kwargs)
 
     c.log(f"Creating change set {change_set_name} for {sc.stack_name}")
