@@ -215,16 +215,17 @@ def update(yes: bool, **kwargs):
 @stk.command()
 @common_stack_params
 @click.option("--yes", is_flag=True, show_default=True, default=False, help="Automatically approve changeset")
-def upsert(yes: bool, **kwargs):
+@click.pass_context
+def upsert(context, yes: bool, **kwargs):
     """
     Create or update stack
     """
     sc = TemplateCommand(**kwargs)
 
     if sc.exists():
-        update(yes, **kwargs)
+        context.forward(update)
     else:
-        create(yes, **kwargs)
+        context.forward(create)
 
 @stk.command()
 @common_stack_params
