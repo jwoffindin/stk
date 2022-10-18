@@ -1,7 +1,13 @@
-VERSION=0.1.0
+TAG_COMMIT := $(shell git rev-list --abbrev-commit --tags --max-count=1)
+TAG := $(shell git describe --abbrev=0 --tags ${TAG_COMMIT} 2>/dev/null || true)
+VERSION := $(TAG:v%=%)
+ifneq ($(shell git status --porcelain),)
+    VERSION := $(VERSION)-dirty
+endif
 
 default:
-	echo "try `make setup test`"
+	@echo "$(VERSION) try 'make setup test'"
+
 setup:
 	python3 -m venv .venv
 	python3 -m pip install --upgrade pip setuptools wheel
@@ -14,7 +20,7 @@ build:
 test:
 	source .venv/bin/activate && pytest .
 
-make test_loop:
+test_loop:
 	source .venv/bin/activate && ptw --runner "pytest --picked --testmon --maxfail=1"
 
 docker-build:
@@ -27,3 +33,5 @@ docker-release: docker-build
 	docker tag johnwo/stk:latest johnwo/stk:$(VERSION)
 	docker push johnwo/stk:latest
 	docker push johnwo/stk:$(VERSION)
+
+.PHONY: default setup build test test_loop docker-build docker-run docker-release
