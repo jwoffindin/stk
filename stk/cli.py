@@ -206,6 +206,19 @@ def update(yes: bool, **kwargs):
             c.log("Stack update failed", style="red")
             exit(-2)
 
+@stk.command()
+@common_stack_params
+@click.option("--yes", is_flag=True, show_default=True, default=False, help="Automatically approve changeset")
+def upsert(yes: bool, **kwargs):
+    """
+    Create or update stack
+    """
+    sc = TemplateCommand(**kwargs)
+
+    if sc.exists():
+        update(yes, **kwargs)
+    else:
+        create(yes, **kwargs)
 
 @stk.command()
 @common_stack_params
