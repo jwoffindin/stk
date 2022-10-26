@@ -7,7 +7,7 @@ from rich.console import Console
 
 logging.basicConfig(filename="stk.log", filemode="w", level=os.environ.get("LOG_LEVEL", "INFO").upper())
 
-console = Console()
+console = Console(emoji=False, log_path=False)
 clog = console.log
 
 

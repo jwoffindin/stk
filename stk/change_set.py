@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import List
 
 from botocore.exceptions import WaiterError
-from rich.console import Console
 from rich.table import Table
 from rich import box
 

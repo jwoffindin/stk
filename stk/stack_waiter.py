@@ -5,8 +5,8 @@ from botocore.exceptions import ClientError
 from rich import box
 from rich.table import Table
 from rich.live import Live
-from rich.console import Console
 
+from . import console
 
 class StackWaiter:
     def __init__(self, stack):
@@ -71,9 +71,8 @@ class StackWaiter:
 
         # Wait with a live-updated table showing resources to be changed, and their current
         # state.
-        self.console = Console()
         try:
-            with Live(self.refresh_table(), refresh_per_second=1, transient=False, console=self.console) as live:
+            with Live(self.refresh_table(), refresh_per_second=1, transient=False, console=console) as live:
 
                 def waiter_callback(response):
                     # print(response)
@@ -84,7 +83,7 @@ class StackWaiter:
                         if len(stacks) > 0:
                             self.resources[self.stack.name].status = response["Stacks"][0]["StackStatus"]
                     elif "Error" in response:
-                        self.console.log(response["Error"]["Message"])
+                        console.log(response["Error"]["Message"])
 
                 waiter = self.wrap_waiter(waiter, waiter_callback)
                 waiter.wait(WaiterConfig={"Delay": 2, "MaxAttempts": 1800}, StackName=self.stack.name)
@@ -114,7 +113,7 @@ class StackWaiter:
                     self.resources[resource.logical_id] = resource
                     self.seen_events.add(resource.event_id)
                     if resource.status_reason:
-                        self.console.log(resource.logical_id + ": " + resource.status_reason)
+                        console.log(resource.logical_id + ": " + resource.status_reason)
 
     def wrap_waiter(self, waiter, callback):
         orig_func = waiter._operation_method

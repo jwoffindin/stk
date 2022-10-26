@@ -16,7 +16,7 @@ from sys import exc_info
 from yaml import safe_load
 
 
-from . import ConfigException, VERSION
+from . import ConfigException, console, VERSION
 from .config_file import ConfigFile
 from .template_source import TemplateSource
 from .basic_stack import StackReference
@@ -64,7 +64,7 @@ class Config:
                 errors = Table("Key", "Value", "Error")
                 for k, v in failed_keys.items():
                     errors.add_row(k, str(v.value), str(v.error))
-                Console().log(errors)
+                console.log(errors)
                 raise Exception(f"An error occurred processing vars: {failed_keys}")
 
         def expand(self, vars: dict):

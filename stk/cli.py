@@ -11,12 +11,11 @@ import yaml
 
 from dataclasses import dataclass
 from os import environ
-from rich.console import Console
 from rich.table import Table
 from rich.prompt import Confirm
 from rich.padding import Padding
 
-from . import VERSION
+from . import VERSION, console
 from .config import Config
 from .stack import Stack
 from .template import TemplateWithConfig
@@ -59,9 +58,9 @@ class StackDelegatedCommand:
             t = Table("Key", "Value", "Description", title="Stack Outputs", title_justify="left", title_style="bold")
             for key, value in outputs.items():
                 t.add_row(key, value, value.description)
-            c.print(t)
+            console.print(t)
         else:
-            c.print(f"Stack {self.stack_name} does not have any outputs")
+            console.print(f"Stack {self.stack_name} does not have any outputs")
 
 
 class TemplateCommand(StackDelegatedCommand):
@@ -71,8 +70,8 @@ class TemplateCommand(StackDelegatedCommand):
 
         parse_error = self.template.error
         if parse_error:
-            c.log(f":x: Template is NOT ok - {parse_error}", emoji=True, style="red")
-            c.print(str(self.template))
+            console.log(f":x: Template is NOT ok - {parse_error}", emoji=True, style="red")
+            console.print(str(self.template))
             exit(-1)
 
     def validate(self):
@@ -80,15 +79,15 @@ class TemplateCommand(StackDelegatedCommand):
         if not template.error:
             errors = self.stack.validate(template)
             if errors:
-                c.log(f"{errors}\n\n", style="red")
-                c.log(":x: Template is NOT ok - failed validation", emoji=True, style="red")
-                c.print(str(self.template))
+                console.log(f"{errors}\n\n", style="red")
+                console.log(":x: Template is NOT ok - failed validation", emoji=True, style="red")
+                console.print(str(self.template))
                 exit(-1)
             else:
-                c.log(":+1: Template is ok", emoji=True, style="green")
+                console.log(":+1: Template is ok", emoji=True, style="green")
 
     def create_change_set(self, change_set_name=None) -> ChangeSet:
-        with c.status("Creating change set"):
+        with console.status("Creating change set"):
             tags = self.config.tags.to_list()
             params = self.config.params
             cs = self.stack.create_change_set(template=self.template, tags=tags, change_set_name=change_set_name, params=params)
@@ -114,9 +113,6 @@ def common_stack_params(func):
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version=VERSION)
 def stk():
-    global c
-    c = Console(emoji=False)
-
     log_level = environ.get("LOG_LEVEL", None)
     if log_level:
         boto3.set_stream_logger("boto3", level=log_level)
@@ -141,36 +137,36 @@ def create(yes: bool, **kwargs):
     """
     sc = TemplateCommand(**kwargs)
     if sc.exists():
-        c.log(f"Stack {sc.stack_name} already exists", style="red")
+        console.log(f"Stack {sc.stack_name} already exists", style="red")
         exit(-1)
 
-    c.log("Creating stack", sc.stack_name, style="blue")
+    console.log("Creating stack", sc.stack_name, style="blue")
 
-    with c.status("Validating template") as status:
+    with console.status("Validating template") as status:
         sc.validate()
 
     change_set = sc.create_change_set()
-    c.log("Change set created")
+    console.log("Change set created")
 
-    c.print(change_set.summary())
+    console.print(change_set.summary())
 
     if not change_set.available():
-        c.log(":x: Change set could not be generated", emoji=True, style="red")
+        console.log(":x: Change set could not be generated", emoji=True, style="red")
         exit(-2)
 
     if yes or Confirm.ask(f"Create stack {sc.stack_name} ?"):
-        c.rule()
-        c.log(f"Applying change set")
+        console.rule()
+        console.log(f"Applying change set")
         change_set.execute()
         if sc.wait("stack_create_complete", change_set.resources()):
-            c.log("Stack created successfully", style="green")
+            console.log("Stack created successfully", style="green")
             if sc.outputs():
                 sc.show_outputs()
         else:
-            c.log("Stack create failed", style="red")
+            console.log("Stack create failed", style="red")
             exit(-2)
     else:
-        c.log("Cleaning up")
+        console.log("Cleaning up")
         sc.delete()
 
 
@@ -184,32 +180,32 @@ def update(yes: bool, **kwargs):
     sc = TemplateCommand(**kwargs)
 
     if not sc.exists():
-        c.log(f"Stack {sc.name} does not exist")
+        console.log(f"Stack {sc.name} does not exist")
         exit(-1)
 
     sc.validate()
 
-    c.log("Diff:\n", sc.diff(sc.template))
+    console.log("Diff:\n", sc.diff(sc.template))
 
     change_set = sc.create_change_set()
 
-    c.log("Change set:\n", change_set.summary())
+    console.log("Change set:\n", change_set.summary())
 
     if not change_set.available():
-        c.log(":x: Change set could not be generated", emoji=True, style="red")
+        console.log(":x: Change set could not be generated", emoji=True, style="red")
         exit(-2)
 
     if yes or Confirm.ask(f"Update stack {sc.stack_name} ?"):
-        c.rule()
-        c.log(f"Applying change set")
+        console.rule()
+        console.log(f"Applying change set")
 
         change_set.execute()
         if sc.wait("stack_update_complete", change_set.resources()):
-            c.log("Stack updated successfully", style="green")
+            console.log("Stack updated successfully", style="green")
             if sc.outputs():
                 sc.show_outputs()
         else:
-            c.log("Stack update failed", style="red")
+            console.log("Stack update failed", style="red")
             exit(-2)
 
 @stk.command()
@@ -236,23 +232,23 @@ def create_change_set(change_set_name: str, **kwargs):
     """
     sc = TemplateCommand(**kwargs)
 
-    c.log(f"Creating change set {change_set_name} for {sc.stack_name}")
+    console.log(f"Creating change set {change_set_name} for {sc.stack_name}")
 
     # Fail fast
     sc.validate()
 
     if sc.exists():
         # Only diff if the stack exists
-        c.log("Diff:\n", sc.diff(sc.template))
+        console.log("Diff:\n", sc.diff(sc.template))
 
     change_set = sc.create_change_set(change_set_name=change_set_name)
 
-    c.print(Padding(change_set.summary(), (0, 10)))
+    console.print(Padding(change_set.summary(), (0, 10)))
 
     if change_set.available():
-        c.log(":+1: Change set created", emoji=True)
+        console.log(":+1: Change set created", emoji=True)
     else:
-        c.log(":x: Change set was not successful", emoji=True)
+        console.log(":x: Change set was not successful", emoji=True)
 
 
 @stk.command()
@@ -261,14 +257,14 @@ def create_change_set(change_set_name: str, **kwargs):
 def execute_change_set(change_set_name: str, **kwargs):
     sc = StackDelegatedCommand(**kwargs)
 
-    c.log(f"Executing change set {change_set_name} for {sc.stack_name}")
+    console.log(f"Executing change set {change_set_name} for {sc.stack_name}")
     try:
         StackDelegatedCommand(**kwargs).execute_change_set(change_set_name=change_set_name)
-        c.log(":+1: Change set complete", emoji=True, style="green")
+        console.log(":+1: Change set complete", emoji=True, style="green")
         if sc.outputs():
             sc.show_outputs()
     except sc.cfn.exceptions.ChangeSetNotFoundException as ex:
-        c.log(":x: Change set does not exist", emoji=True, style="red")
+        console.log(":x: Change set does not exist", emoji=True, style="red")
 
 
 @stk.command()
@@ -280,12 +276,12 @@ def delete_change_set(change_set_name: str, yes: bool, **kwargs):
     Deletes named change set.
     """
     sc = StackDelegatedCommand(**kwargs)
-    c.log(f"Deleting change set {change_set_name} for {sc.stack_name}")
+    console.log(f"Deleting change set {change_set_name} for {sc.stack_name}")
     try:
         sc.delete_change_set(change_set_name=change_set_name)
-        c.log("Change set deleted")
+        console.log("Change set deleted")
     except sc.cfn.exceptions.ChangeSetNotFoundException as ex:
-        c.log(":x: Change set does not exist", style="red", emoji=True)
+        console.log(":x: Change set does not exist", style="red", emoji=True)
 
 
 @stk.command()
@@ -294,17 +290,17 @@ def delete_change_set(change_set_name: str, yes: bool, **kwargs):
 def delete(yes: bool, **kwargs):
     sc = StackDelegatedCommand(**kwargs)
     if not sc.exists():
-        c.log(f"Stack {sc.stack_name} does not exist", style="red")
+        console.log(f"Stack {sc.stack_name} does not exist", style="red")
         exit(-1)
 
     if not (yes or Confirm.ask(f"Delete stack {sc.stack_name} ?")):
-        c.log("Aborting")
+        console.log("Aborting")
         exit(-2)
 
-    c.rule()
-    c.log(f"Destroying stack {sc.stack_name}")
+    console.rule()
+    console.log(f"Destroying stack {sc.stack_name}")
     sc.delete()
-    c.log("Stack deleted")
+    console.log("Stack deleted")
 
 
 @stk.command()
@@ -324,8 +320,8 @@ def show_template(name: str, environment: str, config_path: str, template_path: 
 
     result = template.render()
     if result.error:
-        c.log(f":x: Template is NOT ok - {result.error}", emoji=True, style="red")
-        c.print(str(result))
+        console.log(f":x: Template is NOT ok - {result.error}", emoji=True, style="red")
+        console.print(str(result))
         exit(-1)
 
     result = str(result)
@@ -342,7 +338,7 @@ def show_template(name: str, environment: str, config_path: str, template_path: 
         fh.write(result)
         fh.close()
     else:
-        c.print(result)
+        console.print(result)
 
 
 @stk.command()
@@ -350,16 +346,16 @@ def show_template(name: str, environment: str, config_path: str, template_path: 
 def diff(**kwargs):
     sc = TemplateCommand(**kwargs)
     if not sc.exists():
-        c.log(f"Stack {sc.name} does not exist", style="red")
+        console.log(f"Stack {sc.name} does not exist", style="red")
         return
 
     d = sc.diff(sc.template)
     if d:
-        c.log("Generated diff")
-        c.print(d)
-        # c.log(d)
+        console.log("Generated diff")
+        console.print(d)
+        # console.log(d)
     else:
-        c.log("There are no changes (templates are identical)")
+        console.log("There are no changes (templates are identical)")
 
 
 @stk.command()
@@ -367,10 +363,10 @@ def diff(**kwargs):
 def outputs(**kwargs):
     sc = StackDelegatedCommand(**kwargs)
 
-    c.log(f"Retrieving outputs for {sc.name}")
+    console.log(f"Retrieving outputs for {sc.name}")
 
     if not sc.exists():
-        c.log(f"Stack {sc.name} does not exist", style="red")
+        console.log(f"Stack {sc.name} does not exist", style="red")
         return
 
     sc.show_outputs()
@@ -399,7 +395,6 @@ def show_config(name: str, environment: str, config_path: str, template_path: st
         v = vars[k]
         vars_table.add_row(k, str(v), type(v).__name__)
 
-    console = Console()
     console.print(template_table, "\n")
     console.print(params_table, "\n")
     console.print(vars_table, "\n")

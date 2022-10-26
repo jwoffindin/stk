@@ -31,7 +31,6 @@ class Stack(BasicStack):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.console = Console()
 
     def validate(self, template: RenderedTemplate):
         try:
