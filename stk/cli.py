@@ -395,9 +395,16 @@ def show_config(name: str, environment: str, config_path: str, template_path: st
         v = vars[k]
         vars_table.add_row(k, str(v), type(v).__name__)
 
+    tags = config.tags
+    tags_table = Table("Tag", "Value")
+    for k in sorted(tags.keys()):
+        v = tags[k]
+        tags_table.add_row(k, str(v))
+
     console.print(template_table, "\n")
     console.print(params_table, "\n")
     console.print(vars_table, "\n")
+    console.print(tags_table, "\n")
 
 
 def parse_overrides(overrides: typing.List):
