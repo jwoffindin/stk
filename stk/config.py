@@ -73,7 +73,7 @@ class Config:
 
             Returns dict InterpolationError for all keys that can't be expanded
             """
-            env = Environment(undefined=StrictUndefined)
+            env = Environment(undefined=StrictUndefined, extensions=['jinja2_strcase.StrcaseExtension'])
 
             interpolation_depth = 0
 
@@ -112,7 +112,7 @@ class Config:
             if type(object) != dict:
                 raise Exception(object)
 
-            env = Environment(undefined=StrictUndefined)
+            env = Environment(undefined=StrictUndefined, extensions=['jinja2_strcase.StrcaseExtension'])
 
             for k, v in object.items():
                 try:

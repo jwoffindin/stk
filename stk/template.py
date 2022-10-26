@@ -126,7 +126,7 @@ class Template:
         raw_template = str(self.provider.template(), "utf-8")
 
         content = None
-        env = Environment(line_statement_prefix="##", undefined=StrictUndefined)
+        env = Environment(line_statement_prefix="##", undefined=StrictUndefined, extensions=['jinja2_strcase.StrcaseExtension'])
 
         if self.helpers:
             self.helpers.inject(env)
