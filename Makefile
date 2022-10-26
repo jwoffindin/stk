@@ -1,9 +1,4 @@
-TAG_COMMIT := $(shell git rev-list --abbrev-commit --tags --max-count=1)
-TAG := $(shell git describe --abbrev=0 --tags ${TAG_COMMIT} 2>/dev/null || true)
-VERSION := $(TAG:v%=%)
-ifneq ($(shell git status --porcelain),)
-    VERSION := $(VERSION)-dirty
-endif
+VERSION := $(shell ./setup.py --version)
 
 default:
 	@echo "$(VERSION) try 'make setup test'"
@@ -29,9 +24,16 @@ docker-build:
 docker-run:
 	docker run --rm -it -v ~/.aws:/root/.aws -v ${TEMPLATE_PATH}:/templates -v ${CONFIG_PATH}:/config johnwo/stk:latest bash
 
-docker-release: docker-build
+ifeq ($(shell git status --porcelain),)
+tag:
+	test $(shell git branch --show-current) == "main"
+	git tag -a $(VERSION) -m 'release version $(VERSION)'
+	git push origin $(VERSION)
+
+release: tag docker-build
 	docker tag johnwo/stk:latest johnwo/stk:$(VERSION)
 	docker push johnwo/stk:latest
 	docker push johnwo/stk:$(VERSION)
+endif
 
-.PHONY: default setup build test test_loop docker-build docker-run docker-release
+.PHONY: default setup build test test_loop tag release docker-build docker-run docker-release
