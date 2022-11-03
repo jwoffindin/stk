@@ -56,7 +56,8 @@ class StackDelegatedCommand:
         outputs = self.outputs()
         if outputs:
             t = Table("Key", "Value", "Description", title="Stack Outputs", title_justify="left", title_style="bold")
-            for key, value in outputs.items():
+            for key in sorted(outputs.keys()):
+                value = outputs[key]
                 t.add_row(key, value, value.description)
             console.print(t)
         else:
