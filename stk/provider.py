@@ -116,7 +116,7 @@ class GitProvider(GenericProvider):
             else:
                 # Remote repository
                 url = giturlparse.parse(self.git_url)
-                cache_dir = ".template-cache"
+                cache_dir = os.environ.get("TEMPLATE_CACHE", ".template-cache")
                 target_dir = path.join(cache_dir, self.name)
                 if path.exists(target_dir):
                     log.info(f"using existing cached version {target_dir}")

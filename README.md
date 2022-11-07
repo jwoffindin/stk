@@ -511,7 +511,13 @@ TODO
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-This section provides a quick overview of concepts
+## Environment Variables
+
+| Name | Purpose |
+| `CONFIG_PATH` | Default path to configuration files, override with `--config-path` |
+| `TEMPLATE_PATH` | Default path to templates, usually overridden by config (`template.*`) or `--template-path` cli argument |
+| `TEMPLATE_CACHE` | Override the path to template cache (local copy of template project for git projects only)  |
+
 
 ## Exit codes
 
