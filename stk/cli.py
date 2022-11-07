@@ -193,8 +193,12 @@ def update(yes: bool, **kwargs):
     console.log("Change set:\n", change_set.summary())
 
     if not change_set.available():
-        console.log(":x: Change set could not be generated", emoji=True, style="red")
-        exit(-2)
+        if change_set.is_empty_changeset():
+            console.log(":poop: No changes to be applied", emoji=True, style="blue")
+            exit(-9)
+        else:
+            console.log(":x: Change set could not be generated", emoji=True, style="red")
+            exit(-2)
 
     if yes or Confirm.ask(f"Update stack {sc.stack_name} ?"):
         console.rule()

@@ -52,17 +52,41 @@ class ChangeSet:
         return res["ResponseMetadata"]["HTTPStatusCode"] == 200
 
     def available(self, change_set=None) -> bool:
+        status = self._change_set(change_set).get("ExecutionStatus", None)
+
+        return status == "AVAILABLE"
+
+    def is_empty_changeset(self, change_set=None) -> bool:
+        """
+        Returns true if looks like this change set failed due as a result of
+        no changes (not really a failure)
+
+        TODO: Pretty hacky and not language safe
+        """
+        cs = self._change_set(change_set)
+
+        ex_status = cs.get("ExecutionStatus", "-")
+        status = cs.get("Status", "")
+        reason = cs.get("StatusReason", "")
+
+        return \
+            ex_status == "UNAVAILABLE" and \
+            status == "FAILED" and ( \
+                "The submitted information didn't contain changes" in reason or
+                "No updates are to be performed" in reason
+            )
+
+
+    def _change_set(self, change_set=None):
         if not change_set:
             change_set = self.cfn.describe_change_set(**self._descriptor())
-
-        if change_set and "ExecutionStatus" in change_set:
-            return change_set["ExecutionStatus"] == "AVAILABLE"
+        return change_set
 
     def wait(self, waiter_name: str):
         StackWaiter(self.stack).wait_for_change_set(waiter_name, self)
 
     def summary(self) -> Table:
-        change_set = self.cfn.describe_change_set(**self._descriptor())
+        change_set = self._change_set()
 
         if self.available(change_set):
             detail = Table("Resource", "Type", "Action", "Details", box=box.SIMPLE)

@@ -512,6 +512,15 @@ TODO
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 This section provides a quick overview of concepts
+
+## Exit codes
+
+| Exit code | Reason |
+| --- | --- |
+| -1  | General failure |
+| -2  | Could not generate change set |
+| -9  | No change to apply |
+
 ### Terminology
 
 * **Environment**. What “level” are deploying a stack. E.g. development, test, stage, production, etc.
