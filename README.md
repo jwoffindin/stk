@@ -66,6 +66,9 @@ Requires python 3.10+
     # Install STK via pip
     pip install git+https://github.com/jwoffindin/stk.git
 
+    # alternatively,
+    python3 -m pip install git+https://github.com/jwoffindin/stk.git
+
 ### Docker
 
     alias cfn="docker run --rm -it -v ~/.aws:/root/.aws -v ~/.ssh:/root/.ssh -v $TEMPLATE_PATH:/templates -v $CONFIG_PATH:/config johnwo/stk:latest"
