@@ -69,22 +69,43 @@ Requires python 3.10+
     # alternatively,
     python3 -m pip install git+https://github.com/jwoffindin/stk.git
 
-### Docker
+<!-- ### Docker
 
-    alias cfn="docker run --rm -it -v ~/.aws:/root/.aws -v ~/.ssh:/root/.ssh -v $TEMPLATE_PATH:/templates -v $CONFIG_PATH:/config johnwo/stk:latest"
-
+    alias cfn="docker run --rm -it -v ~/.aws:/root/.aws -v ~/.ssh:/root/.ssh -v $TEMPLATE_PATH:/templates -v $CONFIG_PATH:/config johnwo/stk:latest" -->
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
 ## Getting started
 
+**Note**:
+
 Quick start:
 
-    # Deploy a stack
-    stk create sns dev
+The `cfn init` command will help you get going be creating a "configuration project".
 
+```bash
+$ cfn config init my-project --repo git@github.com:jwoffindin/stk-templates.git
+$ cd my-project
+```
 
+Note: `init` will configure an S3 bucket to store CloudFormation templates. You must
+select an AWS profile with currently valid credentials, otherwise the command will fail
+trying to list available buckets.
+
+The GitHub project <https://github.com/jwoffindin/stk-templates> has several starter
+templates that you can use. For example, to use the `vpc` template to deploy a VPC into
+your AWS account:
+
+```bash
+$ cfn config add vpc
+```
+
+this will create a file `vpc.yml` with starter configuration. You can deploy with:
+
+```bash
+$ cfn create vpc dev
+```
 
 ### Concepts
 
