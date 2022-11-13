@@ -1,20 +1,24 @@
+"""
+Provides `Config` class which handles the loading of configuration and
+exposing derived state.
+"""
 from __future__ import annotations
 
 import pathlib
 import re
 import os
 import logging
-import git
 
 from dataclasses import dataclass
 from datetime import datetime
-from jinja2 import Environment, StrictUndefined
 from pathlib import Path
-from rich.console import Console
-from rich.table import Table
 from sys import exc_info
-from yaml import safe_load
 
+import git
+
+from jinja2 import Environment, StrictUndefined
+from rich.table import Table
+from yaml import safe_load
 
 from . import ConfigException, console, VERSION
 from .config_file import ConfigFile
@@ -26,14 +30,25 @@ log = logging.getLogger("config")
 
 
 class Config:
+    """
+    Represents a final, merged, configuration for a stack deployment.
+    """
+
     @dataclass
     class InterpolationError:
+        """Captures information about an error occurring during evaluation of variables"""
+
         key: str
         value: str
         error: str
 
     @dataclass
     class CoreSettings:
+        """
+        Settings that change the behavior of the cfn command - not directly related
+        to templates or deployments.
+        """
+
         # Attributes
         stack_name: str
         environments: list = None
@@ -73,7 +88,7 @@ class Config:
 
             Returns dict InterpolationError for all keys that can't be expanded
             """
-            env = Environment(undefined=StrictUndefined, extensions=['jinja2_strcase.StrcaseExtension'])
+            env = Environment(undefined=StrictUndefined, extensions=["jinja2_strcase.StrcaseExtension"])
 
             interpolation_depth = 0
 
@@ -112,7 +127,7 @@ class Config:
             if type(object) != dict:
                 raise Exception(object)
 
-            env = Environment(undefined=StrictUndefined, extensions=['jinja2_strcase.StrcaseExtension'])
+            env = Environment(undefined=StrictUndefined, extensions=["jinja2_strcase.StrcaseExtension"])
 
             for k, v in object.items():
                 try:
@@ -266,7 +281,7 @@ class Config:
     ):
         # While we should just receive `name`, we may be be passed
         name = str(Path(name).with_suffix(""))
-        self.name = name.replace('/', '-')
+        self.name = name.replace("/", "-")
         self.environment = environment
         self.config_path = config_path
 
