@@ -97,7 +97,7 @@ class InitCmd:
                 default_flow_style=False,
                 explicit_start=True, sort_keys=False
             ),
-            ".gitignore": "*.log\n"
+            ".gitignore": "*.log\n.template-cache\n"
         }
 
     def _create_config_dir(self):
