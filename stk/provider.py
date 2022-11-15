@@ -116,7 +116,7 @@ class GitProvider(GenericProvider):
             url = urllib.parse.urlparse(self.git_url)
             log.debug(url)
             if url.scheme == "file":  # "file" in url.protocols:
-                log.info(f"Local git repository at {url.path}")
+                log.info("Local git repository at %s", url.path)
                 self.repo = Repo(url.path)
             else:
                 # Remote repository
@@ -124,12 +124,12 @@ class GitProvider(GenericProvider):
                 cache_dir = os.environ.get("TEMPLATE_CACHE", ".template-cache")
                 target_dir = path.join(cache_dir, self.name)
                 if path.exists(target_dir):
-                    log.info(f"using existing cached version {target_dir}")
+                    log.info("using existing cached version %s", target_dir)
                     self.repo = Repo(target_dir)
-                    log.info(f"git pull remote 'origin'")
+                    log.info("git pull remote 'origin'")
                     self.repo.remotes["origin"].pull()
                 else:
-                    log.info(f"don't have a cached copy of {self.name} in {cache_dir}")
+                    log.info("don't have a cached copy of %s in %s", self.name, cache_dir)
                     if not path.exists(cache_dir):
                         os.mkdir(cache_dir)
                     log.info(f"cloning from {self.git_url} -> {target_dir}")

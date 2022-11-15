@@ -90,6 +90,7 @@ class AddTemplateCmd:
             template_content = self.remote_content(template_filename)
             self.write_local_file(local_template_dir, template_filename,content=template_content)
         else:
+            # Use remote template
             template = {"root": "/", "version": "main", "repo": self.repo_url}
             if template != self._common()["template"]:
                 config["template"] = template

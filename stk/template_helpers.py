@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
-import jinja2
 import json
 import os
 import re
@@ -12,11 +11,14 @@ import time
 
 from dataclasses import dataclass
 from importlib import util as importutil
-from jinja2 import Environment
 from os import path
 from pathlib import Path
 from typing import IO
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
+
+import jinja2
+
+from jinja2 import Environment
 
 from . import log
 from .human_bytes import HumanBytes

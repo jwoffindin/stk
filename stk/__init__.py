@@ -26,8 +26,17 @@ else:
 console = Console(emoji=False, log_path=False)
 clog = console.log
 
-yaml.SafeDumper.add_representer(type(None), lambda x, value: x.represent_scalar("tag:yaml.org,2002:null", ""))
+# This makes yaml.dump() output `foo: ` rather than `foo: null`
+#
+yaml.SafeDumper.add_representer(
+    type(None),
+    lambda x, value: x.represent_scalar("tag:yaml.org,2002:null", "")
+)
 
 
 class ConfigException(Exception):
+    """
+    Needs a new home - supposed to be base class for any configuration
+    based errors.
+    """
     pass

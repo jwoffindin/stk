@@ -1,9 +1,8 @@
-from dataclasses import dataclass
 import os
 import random
-import re
 import sys
 
+from dataclasses import dataclass
 from typing import List
 
 import boto3
@@ -11,7 +10,7 @@ import inquirer
 import yaml
 import botocore
 
-from git import Repo
+from git.repo import Repo
 
 from .. import clog
 
@@ -26,9 +25,9 @@ class InitCmd:
     """
 
     def __init__(self, directory) -> None:
-        self.config = None
+        self.config = {}
         self.directory = directory
-        self.repo = None
+        self.repo: Repo
 
     def new(self, **kwargs):
         """
@@ -41,16 +40,14 @@ class InitCmd:
         self._write_config_files()
         self._commit_config_files()
 
-    def _build_config(self, repo: str, profile: str = None, region: str = None, bucket: str = None, environments: List = None):
+    def _build_config(self, repo: str, profile: str = "", region: str = "", bucket: str = "", environments: List = []):
         """
         Sets self.config to be hash of files and their content that are to be written to
         new config project
         """
-        print(f"profile={profile}, region={region}")
-
         if os.path.exists(self.directory):
             print(f"{self.directory} already exists")
-            exit(-2)
+            sys.exit(-2)
 
         if not environments:
             environments = self._gather_environments()
@@ -147,8 +144,11 @@ class InitCmd:
             aws_settings = {
                 "profile": self.profile,
                 "region": self.region,
-                **inquirer.prompt(questions)
             }
+
+            answers = inquirer.prompt(questions)
+            if answers:
+              aws_settings = {**aws_settings, **answers}
 
             self._gather_bucket(**aws_settings)
 
@@ -255,7 +255,7 @@ class InitCmd:
 
         return {"aws": settings}
 
-    def _gather_environments(self):
+    def _gather_environments(self) -> List:
         """
         Allow user to specify what environment's to deploy
         """
@@ -270,7 +270,12 @@ class InitCmd:
             ]
         )
 
-        return answers["environments"]
+        if answers:
+            envs = answers["environments"]
+            if envs:
+                return envs
+
+        return ["dev, test", "prod"]
 
 
 if __name__ == "__main__":
