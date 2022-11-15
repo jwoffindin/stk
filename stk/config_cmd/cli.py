@@ -2,6 +2,7 @@
   cfn config init -- create a new project
   cfn config add .... -- add config file(s) to existing project
 """
+import os
 from typing import List
 import click
 
@@ -46,11 +47,14 @@ def init(directory: str, repo: str, profile: str, region: str, bucket: str, env:
             #    clog(f"unable to add {tpl}: {ex}")
 
 
-@ config.command()
-@ click.argument("template")
-@ click.option("--repo", help="Path to template project")
-def add(template: str, repo: str) -> None:
+@config.command()
+@click.argument("template")
+@click.option("--repo", help="Path to template project")
+@click.option("--inline", is_flag=True, default=False, help="Create a local copy of template")
+@click.option("--template-dir", default=os.environ.get('TEMPLATE_PATH', 'templates'), help="Where --copy-template should store the template")
+
+def add(template: str, repo: str, inline: bool, template_dir: str) -> None:
     """
     Add configuration for template from remote repository
     """
-    AddTemplateCmd(repo).add(template)
+    AddTemplateCmd(repo).add(template, inline=inline, local_template_dir=template_dir)

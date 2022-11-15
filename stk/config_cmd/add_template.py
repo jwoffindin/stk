@@ -1,4 +1,5 @@
 import os
+import pathlib
 import sys
 import yaml
 
@@ -48,25 +49,26 @@ class AddTemplateCmd:
 
         clog(f"Using {self.provider.git_url} for remote template source")
 
-    def add(self, name: str, follow_refs: bool = True) -> None:
+    def add(self, name: str, follow_refs: bool = True, inline: bool = False, local_template_dir: str = "templates") -> None:
         """
         Generate local configuration for remote template
 
         follow_refs: if true, will attempt to add referenced stacks (if they don't exist)
         """
-        template_path = name + ".yaml"
-        if not self.is_remote_file(template_path):
+        template_filename = name + ".yaml"
+        if not self.is_remote_file(template_filename):
             clog(
-                f"{template_path} is not a file, or does not exist in remote repository")
+                f"{template_filename} is not a file, or does not exist in remote repository")
             sys.exit(-1)
 
         # Info file in template repository has leaving prefix
-        info_path = "_" + template_path
-        if not self.is_remote_file(info_path):
-            clog(f"{info_path} does not exist in remote repository - guessing defaults")
+        info_filename = "_" + template_filename
+        if not self.is_remote_file(info_filename):
+            clog(
+                f"{info_filename} does not exist in remote repository - guessing defaults")
             metadata = {"config": None}
         else:
-            metadata = yaml.safe_load(self.remote_content(info_path))
+            metadata = dict(yaml.safe_load(self.remote_content(info_filename)))
 
         if metadata["config"] is None:
             metadata["config"] = {}
@@ -79,17 +81,25 @@ class AddTemplateCmd:
             **metadata.get("config"),
         }
 
-        template = {"root": "/", "version": "main", "repo": self.repo_url}
-        if template != self._common()["template"]:
-            config["template"] = template
+        if inline:
+            # Make a local copy of the template under `local_template_dir`, and config file
+            # will reference this local copy. Not ideal in the long term, but easy way to
+            # get started
+            clog(f"Writing local template to {os.path.join(local_template_dir, template_filename)}")
+            config["template"] = { "root": local_template_dir, "version": None, "repo": None }
+            template_content = self.remote_content(template_filename)
+            self.write_local_file(local_template_dir, template_filename,content=template_content)
+        else:
+            template = {"root": "/", "version": "main", "repo": self.repo_url}
+            if template != self._common()["template"]:
+                config["template"] = template
 
         clog(f"Writing config file {name}.yml")
+
         content = [f"# Starting configuration for deploying stack {name}\n"]
         if "description" in metadata and metadata["description"]:
-            content += ["# " +
-                        line for line in metadata["description"].splitlines(keepends=True)]
-        content += [yaml.safe_dump(config, default_flow_style=False,
-                                   explicit_start=True, sort_keys=False)]
+            content += ["# " + line for line in metadata["description"].splitlines(keepends=True)]
+        content += [yaml.safe_dump(config, default_flow_style=False, explicit_start=True, sort_keys=False)]
 
         self.write_local_file(name + ".yml", content="".join(content))
 
@@ -114,11 +124,11 @@ class AddTemplateCmd:
         local_file = os.path.join(self.config_dir, *p)
         return os.path.isfile(local_file)
 
-    def remote_content(self, *p) -> bool:
+    def remote_content(self, *p) -> str:
         """
         Returns content of remote file
         """
-        return self.provider.content(*p)
+        return str(self.provider.content(*p), encoding="utf-8")
 
     def local_content(self, *p) -> str:
         """
@@ -133,6 +143,7 @@ class AddTemplateCmd:
         Create local file (only if it doesn't exist)
         """
         local_file = os.path.join(self.config_dir, *p)
+        pathlib.Path(local_file).parents[0].mkdir(parents=True, exist_ok=True)
         with open(local_file, "x", encoding="utf-8") as fh:
             fh.write(content)
 
