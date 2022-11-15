@@ -1,16 +1,10 @@
 from __future__ import annotations
 
-import os
-import logging
-
 from botocore.exceptions import ClientError
 
+from . import log
 from .aws_config import AwsSettings
 from .cfn_bucket import CfnBucket
-
-logging.basicConfig(filename="stk.log", filemode="w", level=os.environ.get("LOG_LEVEL", "INFO"))
-log = logging.getLogger("basic_stack")
-
 
 class BasicStack:
     def __init__(self, aws: AwsSettings, name: str):

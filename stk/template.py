@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import re
-import logging
 
 from typing import List
 from cfn_tools import load_yaml
 from jinja2 import Environment, StrictUndefined
 
+from . import log
 from .provider import GenericProvider
 from .config import Config
 from .template_helpers import TemplateHelpers
 from .cfn_bucket import CfnBucket, Uploadable
-
-log = logging.getLogger("template")
 
 
 class FailedTemplate(dict):

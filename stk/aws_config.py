@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 
 import boto3
-import logging
 
-log = logging.getLogger("aws_config")
+from . import log
 
 
 @dataclass

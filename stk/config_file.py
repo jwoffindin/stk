@@ -1,11 +1,10 @@
 from __future__ import annotations
-
-import yaml
-import logging
-
 from pathlib import Path
 
-log = logging.getLogger("config_file")
+import yaml
+
+
+from . import log
 
 
 class ConfigFiles(list):

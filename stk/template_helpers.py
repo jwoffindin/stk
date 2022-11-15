@@ -9,7 +9,6 @@ import re
 import shutil
 import tempfile
 import time
-import logging
 
 from dataclasses import dataclass
 from importlib import util as importutil
@@ -19,13 +18,12 @@ from pathlib import Path
 from typing import IO
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
+from . import log
 from .human_bytes import HumanBytes
 from .cfn_bucket import CfnBucket, Uploadable
 from .ignore_file import parse_ignore_list
 from .multipart_encoder import multipart_encode
 from .config import Config
-
-log = logging.getLogger("template_helpers")
 
 
 @dataclass

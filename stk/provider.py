@@ -1,17 +1,22 @@
+"""
+Abstracts access templates stored in either a remote git
+repository, or local filesystem.
+"""
 from __future__ import annotations
 
 import os
 import stat
-import giturlparse
 import urllib
-import logging
 
-from dataclasses import dataclass
-from git import Repo
 from os import path, walk
 from pathlib import Path
+from dataclasses import dataclass
 
-log = logging.getLogger("provider")
+import giturlparse
+
+from git.repo import Repo
+
+from . import log
 
 
 class GenericProvider:
@@ -99,7 +104,7 @@ class GitProvider(GenericProvider):
         if self.root.endswith("/"):
             self.root = self.root[:-1]
 
-        logging.debug(f"GitProvider(name={self.name}, url={self.git_url}, root={self.root})")
+        log.debug(f"GitProvider(name={self.name}, url={self.git_url}, root={self.root})")
 
         if not self.git_url:
             raise Exception("template.git_url is not set")

@@ -542,6 +542,17 @@ TODO
 | `TEMPLATE_PATH` | Default path to templates, usually overridden by config (`template.*`) or `--template-path` cli argument |
 | `TEMPLATE_CACHE` | Override the path to template cache (local copy of template project for git projects only)  |
 
+## Logging
+
+By default internal logs are sent to syslog with WARN.
+
+The following environment variables can be used to change this behaviour
+
+| Environment variable | Purpose | Example |
+| --- | --- | --- |
+| `CFN_LOG_LEVEL` | Change log level | `DEBUG`, `INFO`, `ERROR` |
+| `LOG_LEVEL` | Fallback log level. Also used by boto, so will change boto logging too | `INFO`, `WARN` |
+| `LOG_FILE` | Direct logging to this file rather than syslog | `./cfn.log` |
 
 ## Exit codes
 

@@ -7,7 +7,6 @@ from __future__ import annotations
 import pathlib
 import re
 import os
-import logging
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -20,13 +19,11 @@ from jinja2 import Environment, StrictUndefined
 from rich.table import Table
 from yaml import safe_load
 
-from . import ConfigException, console, VERSION
+from . import ConfigException, log, console, VERSION
 from .config_file import ConfigFile
 from .template_source import TemplateSource
 from .basic_stack import StackReference
 from .aws_config import AwsSettings
-
-log = logging.getLogger("config")
 
 
 class Config:
