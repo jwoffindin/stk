@@ -121,19 +121,18 @@ class GitProvider(GenericProvider):
             else:
                 # Remote repository
                 url = giturlparse.parse(self.git_url)
-                cache_dir = os.environ.get("TEMPLATE_CACHE", ".template-cache")
-                target_dir = path.join(cache_dir, self.name)
-                if path.exists(target_dir):
-                    log.info("using existing cached version %s", target_dir)
-                    self.repo = Repo(target_dir)
+                cache_dir = self._cache_path(url)
+                if path.exists(cache_dir):
+                    log.info("using existing cached version %s", cache_dir)
+                    self.repo = Repo(cache_dir)
                     log.info("git pull remote 'origin'")
                     self.repo.remotes["origin"].pull()
                 else:
-                    log.info("don't have a cached copy of %s in %s", self.name, cache_dir)
-                    if not path.exists(cache_dir):
-                        os.mkdir(cache_dir)
-                    log.info(f"cloning from {self.git_url} -> {target_dir}")
-                    self.repo = Repo.clone_from(self.git_url, target_dir)
+                    log.info("don't have a cached copy of %s in %s", self.git_url, cache_dir)
+                    os.makedirs(cache_dir, mode=0o700, exist_ok=True)
+                    log.info(f"cloning from {self.git_url} -> {cache_dir}")
+                    self.repo = Repo.clone_from(self.git_url, cache_dir)
+
         log.info(f"getting commit {self.git_ref} from {self.repo}")
         self.commit = self.repo.commit(self.git_ref)
         log.info(f"have commit {self.commit.hexsha}")
@@ -187,6 +186,10 @@ class GitProvider(GenericProvider):
                 else:
                     type = "file"
                 yield (item_path, type, item.data_stream.read())
+
+    def _cache_path(self, url: giturlparse.parser.Parsed) -> str:
+        cache_dir = os.environ.get("TEMPLATE_CACHE", ".template-cache")
+        return path.join(cache_dir, url.host, url.owner, *(url.groups), url.repo)  # type: ignore
 
 
 def provider(source):
