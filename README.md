@@ -61,12 +61,16 @@ The two key benefits of using `stk` for CloudFormation management.
 * Reduce change risk through improvded visibility. Use of Jinja2 for templates and use of explicit configuration (directly interpolated variables) over implicit configuration (AWS parameters) (more later) mean you can see exactly what is going to change.
 ### Local installation (Python/Pip)
 
-Requires python 3.10+
 
-    # Install STK via pip
+> **Note**: 
+> Requires **python 3.10+**
+
+Install STK via pip
+
     pip install git+https://github.com/jwoffindin/stk.git
 
-    # alternatively,
+Alternatively
+
     python3 -m pip install git+https://github.com/jwoffindin/stk.git
 
 <!-- ### Docker
@@ -78,33 +82,27 @@ Requires python 3.10+
 
 ## Getting started
 
-**Note**:
-
-Quick start:
-
-The `cfn init` command will help you get going be creating a "configuration project".
+> **Note**: Quick start: The `cfn init` command will help you get going be creating a "configuration project".
 
 ```bash
-$ cfn config init my-project --repo git@github.com:jwoffindin/stk-templates.git
-$ cd my-project
+cfn config init my-project --repo git@github.com:jwoffindin/stk-templates.git
+cd my-project
 ```
 
-Note: `init` will configure an S3 bucket to store CloudFormation templates. You must
-select an AWS profile with currently valid credentials, otherwise the command will fail
-trying to list available buckets.
+> **Note**: `init` will configure an S3 bucket to store CloudFormation templates. You must select an AWS profile with currently valid credentials, otherwise the command will fail trying to list available buckets.
 
 The GitHub project <https://github.com/jwoffindin/stk-templates> has several starter
 templates that you can use. For example, to use the `vpc` template to deploy a VPC into
 your AWS account:
 
 ```bash
-$ cfn config add vpc
+cfn config add vpc
 ```
 
 this will create a file `vpc.yml` with starter configuration. You can deploy with:
 
 ```bash
-$ cfn create vpc dev
+cfn create vpc dev
 ```
 
 ### Concepts
@@ -121,6 +119,7 @@ The most common commands:
 * diff
 * create — deploy a new stack `cfn create <archetype> <environment>`
 * update - update an existing stack `cfn update <archetype> <environment>`
+
 ### Configuration file
 
 A configuration file is simply a YAML file used to that declares:
@@ -145,13 +144,15 @@ environments:
 This configuration file will allow us to deploy dev, test and prod instances of a CloudFormation template
 `foo.yaml` into the `ap-southeast-2 `region.
 
-```sh
-# Will create a stack called foo-dev in ap-southeast-2 using default profile and/or environment
-# credentials.
-$ stk create foo dev
+Will create a stack called foo-dev in ap-southeast-2 using default profile and/or environment credentials.
 
-# Create and apply a change set to the 'foo-test' stack in ap-southeast-2 region.
-$ stk update foo test
+```sh
+stk create foo dev
+```
+
+Create and apply a change set to the 'foo-test' stack in ap-southeast-2 region.
+```sh
+stk update foo test
 ```
 
 ### CloudFormation Templates
@@ -189,7 +190,6 @@ Description: |
 ## endif
 
 ```
-
 
 ## Configuration
 
