@@ -239,12 +239,13 @@ class TemplateHelpers:
             log.info(f"Adding files from {dir}")
             count, size = 0, 0
             for file_path, type, file_content in self.provider.find(dir, ignore):
-                # print(f"Processing {file_path} ({type})")
+                file_size = len(file_content)
+                log.debug(" adding file %s (size=%s, type=%s)", HumanBytes.format(file_size), file_path, type)
                 file_path = path.join(prefix, file_path)
 
                 # Add file to zip
                 info = ZipInfo(filename=file_path, date_time=time.localtime(time.time())[:6])
-                info.file_size = len(file_content)
+                info.file_size = file_size
 
                 # Set file perm ugo=rx, preserve symlinks - 0xa000 (0x120000) bit
                 info.external_attr = (0o120755 if type == "symlink" else 0o555) << 16
@@ -257,7 +258,7 @@ class TemplateHelpers:
                 count += 1
                 size += info.file_size
 
-            log.info(f"Added {count} files, total {HumanBytes.format(size)}")
+            log.info("Added %d files, total %s", count, HumanBytes.format(size))
 
         # final (composite) checksum is based on filenames and content md5s. They are sorted so checksum doesn't
         # vary if files are discovered in different orders.

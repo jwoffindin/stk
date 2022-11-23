@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import os
 import stat
+import types
+from typing import Union, cast
 import urllib
 
 from os import path, walk
@@ -15,6 +17,7 @@ from dataclasses import dataclass
 import giturlparse
 
 from git.repo import Repo
+from git import Blob, Tree
 
 from . import log
 
@@ -60,31 +63,51 @@ class FilesystemProvider(GenericProvider):
     def is_tree(self, *p) -> bool:
         return path.isdir(path.join(self.root, *p))
 
-    def find(self, dir, ignore=None):
+    def find(self, dir, ignore: types.FunctionType = None):  # type: ignore
         start_dir = path.abspath(path.join(self.root, dir))
 
         if not path.exists(start_dir):
             raise Exception(f"{dir} does not exist in {self.root}")
 
-        for p, _, files in walk(start_dir):
-            for f in files:
-                file_path = path.join(p, f)
-                if ignore and ignore(file_path):
-                    # print(f"Skipping {file_path} due to ignore rule")
-                    continue
+        if self.is_tree(start_dir):
+            log.info("adding directory tree under %s to zip", dir)
+            for p, _, files in walk(start_dir):
+                for f in files:
+                    file_path = path.join(p, f)
+                    if ignore and ignore(file_path):
+                        log.info("Skipping %s due to ignore rule", file_path)
+                        continue
+                    # strip the directory prefix. E.g.
+                    #  'functions/<function-name>/foo.txt' -> foo.txt
+                    relative_path = file_path[len(start_dir) + 1 :]
 
-                # strip the directory prefix. E.g.
-                #  'functions/<function-name>/foo.txt' -> foo.txt
-                relative_path = file_path[len(start_dir) + 1 :]
+                    file_st = os.lstat(file_path)
+                    if stat.S_ISREG(file_st.st_mode):
+                        yield (relative_path, "file", self.content(file_path))
+                    elif stat.S_ISLNK(file_st.st_mode):
+                        target = os.readlink(file_path)
+                        yield (relative_path, "symlink", target)
+                    else:
+                        raise Exception("Unsupported filesystem object at " + file_path)
+        elif self.is_file(start_dir):
 
-                st = os.lstat(file_path)
-                if stat.S_ISREG(st.st_mode):
-                    yield (relative_path, "file", self.content(file_path))
-                elif stat.S_ISLNK(st.st_mode):
-                    target = os.readlink(file_path)
-                    yield (relative_path, "symlink", target)
-                else:
-                    raise Exception("Unsupported filesystem object at " + file_path)
+            relative_path = path.basename(start_dir)
+
+            log.info("adding single file %s (from %s) to zip", relative_path, dir)
+
+            if ignore and ignore(start_dir):
+                log.warning("Adding a single file to zip, but it's in the ignore list")
+
+            file_st = os.lstat(start_dir)
+            if stat.S_ISREG(file_st.st_mode):
+                yield (relative_path, "file", self.content(start_dir))
+            elif stat.S_ISLNK(file_st.st_mode):
+                target = os.readlink(start_dir)
+                yield (relative_path, "symlink", target)
+            else:
+                raise Exception("Unsupported filesystem object at " + start_dir)
+        else:
+            raise Exception("Unsupported filesystem object at " + start_dir)
 
     def __str__(self) -> str:
         return self.name
@@ -169,23 +192,35 @@ class GitProvider(GenericProvider):
         except KeyError:
             return False
 
-    def find(self, dir, ignore=None):
+    def find(self, dir, ignore: types.FunctionType = None):  # type: ignore
         if dir.endswith("/"):
             dir = dir[:-1]
 
         tree_path = path.join(self.root, dir)
         tree = self.commit.tree[tree_path]
-        for item in tree.traverse():
-            item_path = item.path[len(tree_path) + 1 :]
-            if ignore and ignore(item_path):
-                continue
+        if tree.type == "tree":
+            log.info("adding directory tree under %s to zip", tree_path)
+            for item in tree.traverse():
+                item = cast(Union['Tree', 'Blob'], item)
+                item_path = item.path[len(tree_path) + 1 :]
+                if ignore and ignore(item_path):
+                    continue
 
-            if item.type == "blob":
-                if item.mode & item.link_mode == item.link_mode:
-                    type = "symlink"
-                else:
-                    type = "file"
-                yield (item_path, type, item.data_stream.read())
+                if item.type == "blob":
+                    if item.mode & item.link_mode == item.link_mode:
+                        type = "symlink"
+                    else:
+                        type = "file"
+                    yield (item_path, type, item.data_stream.read())
+        elif tree.type == "blob":
+            log.info("adding single file %s to zip", tree_path)
+            if tree.mode & tree.link_mode == tree.link_mode:
+                type = "symlink"
+            else:
+                type = "file"
+            yield (tree_path, type, tree.data_stream.read())
+        else:
+            raise Exception("Unsupported git object at " + tree_path)
 
     def _cache_path(self, url: giturlparse.parser.Parsed) -> str:
         cache_dir = os.environ.get("TEMPLATE_CACHE", ".template-cache")
