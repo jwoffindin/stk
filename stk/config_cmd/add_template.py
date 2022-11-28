@@ -81,12 +81,12 @@ class AddTemplateCmd:
             # Refs use underscore (since yaml doesn't like hyphens in keys), but have been using hyphens
             # in stack names. Bit of a hack here :-/
             kebab_name = name.replace('_', '-')
-            try:
+            if kebab_name != name:
+                clog(f"{template_filename}.yaml not found in remote repository, trying kebab-case version")
                 self.add(kebab_name, follow_refs=follow_refs, inline=inline, local_template_dir=local_template_dir)
                 return
-            except:
-                clog(f"{template_filename}, nor {kebab_name} is not a file, or does not exist in remote repository")
-                raise
+            clog(f"{template_filename}.yaml not found in remote repository. Aborting")
+            exit(-1)
 
         # Load meta-data associated with remote template
         #  file in template repository with _ prefix
