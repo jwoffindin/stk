@@ -1,12 +1,15 @@
-from dataclasses import dataclass
 
+import difflib
 import os
 import pathlib
 import sys
 from typing import Any, Dict
-import yaml
+from dataclasses import dataclass
 
-from .. import clog
+import yaml
+from rich.prompt import Prompt
+
+from .. import clog, console
 from ..provider import GitProvider
 
 
@@ -179,8 +182,38 @@ class AddTemplateCmd:
         """
         local_file = os.path.join(self.config_dir, *p)
         pathlib.Path(local_file).parents[0].mkdir(parents=True, exist_ok=True)
-        with open(local_file, "x", encoding="utf-8") as fh:
-            fh.write(content)
+        try:
+            with open(local_file, "x", encoding="utf-8") as out:
+                out.write(content)
+            return
+        except FileExistsError:
+            with open(local_file, "r", encoding="utf-8") as inp:
+                original_content = inp.read()
+            if original_content == content:
+                clog(f"...skipping {local_file}, file already exists and is identical")
+                return
+
+        # Print diff of current/proposed and prompt user if they want to overwrite
+        diff = difflib.unified_diff(
+            original_content.splitlines(keepends=True),
+            content.splitlines(keepends=True),
+            fromfile='current',
+            tofile='proposed',
+            lineterm="\n"
+        )
+        sys.stdout.writelines(diff)
+
+        # Confirm with user whether they want to overwrite, skip, or abort
+        answer = Prompt.ask(f"Overwrite {local_file} ?", console=console, choices=["y", "n", "q"], default="n")
+        if answer == "y":
+            with open(local_file, "w", encoding="utf-8") as out:
+                out.write(content)
+            return
+        elif answer == "n":
+            clog(f"skipping {local_file}")
+        else:
+            clog("Aborting")
+            sys.exit(-1)
 
     def core_environments(self):
         """
