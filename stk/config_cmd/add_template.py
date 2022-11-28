@@ -85,7 +85,7 @@ class AddTemplateCmd:
                 clog(f"{template_filename}.yaml not found in remote repository, trying kebab-case version")
                 self.add(kebab_name, follow_refs=follow_refs, inline=inline, local_template_dir=local_template_dir)
                 return
-            clog(f"{template_filename}.yaml not found in remote repository. Aborting")
+            clog(f"{template_filename} not found in remote repository. Aborting")
             exit(-1)
 
         # Load meta-data associated with remote template
