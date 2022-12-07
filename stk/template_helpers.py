@@ -104,16 +104,18 @@ class TemplateHelpers:
 
     IGNORE_FILE = ".package-ignore"
 
-    def lambda_uri(self, name: str) -> str:
+    def lambda_uri(self, name: str, prefix: str="") -> str:
+        """Upload lambda to S3 and return an https URI to the code"""
         lambda_path = path.join("functions", name)
 
-        zipped = self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path))
+        zipped = self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path), prefix=prefix)
         return self.bucket.upload(zipped).as_s3()
 
-    def lambda_code(self, name: str) -> dict:
+    def lambda_code(self, name: str, prefix: str="") -> dict:
+        """Upload lambda to S3 and return a {S3Bucket, S3Key} pair to the result"""
         lambda_path = path.join("functions", name)
 
-        zipped = self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path))
+        zipped = self.zip_tree(dir=lambda_path, ignore=self.ignore_list(lambda_path), prefix=prefix)
         uploaded = self.bucket.upload(zipped)
 
         return {"S3Bucket": uploaded.bucket.bucket_name, "S3Key": uploaded.key}
