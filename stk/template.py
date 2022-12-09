@@ -5,7 +5,9 @@ import re
 
 from typing import List
 from cfn_tools import load_yaml
-from jinja2 import Environment, StrictUndefined
+from jinja2 import Environment, StrictUndefined, nodes
+from jinja2.ext import Extension
+from jinja2.exceptions import TemplateRuntimeError
 
 from . import log
 from .provider import GenericProvider
@@ -106,6 +108,32 @@ class RenderedTemplate(dict, Uploadable):
         return metadata.get("stack", {}).get("iam_capabilities", [])
 
 
+class RaiseExtension(Extension):
+    """
+    Extension for raising exceptions in Jinja2 template from
+    https://stackoverflow.com/questions/21778252/how-to-raise-an-exception-in-a-jinja2-macro
+    """
+    tags = set(['raise'])
+
+    # See also: jinja2.parser.parse_include()
+    def parse(self, parser):
+        # the first token is the token that started the tag. In our case we
+        # only listen to "raise" so this will be a name token with
+        # "raise" as value. We get the line number so that we can give
+        # that line number to the nodes we insert.
+        lineno = next(parser.stream).lineno
+
+        # Extract the message from the template
+        message_node = parser.parse_expression()
+
+        return nodes.CallBlock(
+            self.call_method('_raise', [message_node], lineno=lineno),
+            [], [], [], lineno=lineno
+        )
+
+    def _raise(self, msg, caller):
+        raise TemplateRuntimeError(msg)
+
 class Template:
     class TemplateRenderingException(Exception):
         def __init__(self, template):
@@ -124,7 +152,7 @@ class Template:
         raw_template = str(self.provider.template(), "utf-8")
 
         content = None
-        env = Environment(line_statement_prefix="##", undefined=StrictUndefined, extensions=['jinja2_strcase.StrcaseExtension'])
+        env = Environment(line_statement_prefix="##", undefined=StrictUndefined, extensions=['jinja2_strcase.StrcaseExtension', RaiseExtension])
 
         if self.helpers:
             self.helpers.inject_helpers(env)
