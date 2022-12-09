@@ -43,7 +43,7 @@ class TestTemplateHelpers(StackFixtures):
     def test_custom_helpers_loaded_from_provider(self, provider: GenericProvider, config: Config, env):
         helpers = TemplateHelpers(provider=provider, bucket=None, custom_helpers=["a_custom_helper"], config=config)
 
-        helpers.inject(env)
+        helpers.inject_helpers(env)
 
         assert "a_custom_helper" in env.globals
         assert env.globals["a_custom_helper"](41) == 42

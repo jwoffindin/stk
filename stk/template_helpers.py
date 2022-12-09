@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import contextlib
 import hashlib
 import json
@@ -68,33 +69,42 @@ class TemplateHelpers:
             for name in custom_helpers:
                 self.custom_helpers[name] = self._load_custom_helper(name)
 
-    def inject(self, env: Environment):
+    def inject_helpers(self, env: Environment):
         """
         Inject helpers into a Jinja2 environment. We have a set of core (standard) helpers that
         should be useful for most projects.
 
         Template projects can define custom helpers for domain-specific logic.
         """
-        g = env.globals
+        funcs = env.globals
 
         # Core helpers
-        g["resourcify"] = self.resourcify
-        g["lambda_uri"] = self.lambda_uri
-        g["lambda_code"] = self.lambda_code
-        g["user_data"] = self.user_data
-        g["include_file"] = self.include_file
-        g["upload_zip"] = self.upload_zip
-        g["tags"] = self.tags
-        g["resource_cidr"] = self.resource_cidr
+        funcs["resourcify"] = self.resourcify
+        funcs["lambda_uri"] = self.lambda_uri
+        funcs["lambda_code"] = self.lambda_code
+        funcs["user_data"] = self.user_data
+        funcs["include_file"] = self.include_file
+        funcs["upload_zip"] = self.upload_zip
+        funcs["tags"] = self.tags
+        funcs["resource_cidr"] = self.resource_cidr
+        funcs["b64encode"] = self.b64encode
+
+        # Core filters
+        filters = env.filters
+        filters['b64encode'] = self.b64encode
 
         # Custom helpers (defined in templates/helpers and specified in config via 'helpers' stanza)
         for name, func in self.custom_helpers.items():
             # Do this via func to avoid late binding problems
             # https://stackoverflow.com/questions/3431676/creating-functions-in-a-loop
-            g[name] = self._make_helper_wrapper(func)
+            funcs[name] = self._make_helper_wrapper(func)
 
     def _make_helper_wrapper(self, func):
         return lambda *args, **kwargs: func(self, *args, **kwargs)
+
+    def b64encode(self, s: str) -> str:
+        """Base64 encode a string, used both as a filter and a function"""
+        return base64.b64encode(s.encode('utf-8')).decode('utf-8')
 
     def resourcify(self, name) -> str:
         """
@@ -205,6 +215,8 @@ class TemplateHelpers:
 
     def include_file(self, include_file_name, padding=8, prefix="\n", **extra_vars) -> str:
         env = Environment(line_statement_prefix="##", undefined=jinja2.StrictUndefined)
+
+        self.inject_helpers(env)
 
         content = self.provider.content(path.join("files", include_file_name))
         template = env.from_string(source=str(content, "utf-8"))

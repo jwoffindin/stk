@@ -127,7 +127,7 @@ class Template:
         env = Environment(line_statement_prefix="##", undefined=StrictUndefined, extensions=['jinja2_strcase.StrcaseExtension'])
 
         if self.helpers:
-            self.helpers.inject(env)
+            self.helpers.inject_helpers(env)
 
         content = None
         # This will fail if rendered template can't be processed via Jinja2 (e.g. undefined variable access etc)
