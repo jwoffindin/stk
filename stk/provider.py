@@ -18,6 +18,7 @@ import giturlparse
 
 from git.repo import Repo
 from git import Blob, Tree
+from gitdb.exc import BadName
 
 from . import log
 
@@ -148,17 +149,26 @@ class GitProvider(GenericProvider):
                 if path.exists(cache_dir):
                     log.info("using existing cached version %s", cache_dir)
                     self.repo = Repo(cache_dir)
-                    log.info("git pull remote 'origin'")
-                    self.repo.remotes["origin"].pull()
+                    log.info("git fetch remote 'origin'")
+                    self.repo.remotes["origin"].fetch(refspec="+refs/heads/*:refs/heads/*")
                 else:
                     log.info("don't have a cached copy of %s in %s", self.git_url, cache_dir)
                     os.makedirs(cache_dir, mode=0o700, exist_ok=True)
-                    log.info(f"cloning from {self.git_url} -> {cache_dir}")
-                    self.repo = Repo.clone_from(self.git_url, cache_dir)
+                    log.info("cloning from %s -> %s", self.git_url, cache_dir)
+                    self.repo = Repo.clone_from(self.git_url, cache_dir, bare=True)
 
-        log.info(f"getting commit {self.git_ref} from {self.repo}")
-        self.commit = self.repo.commit(self.git_ref)
-        log.info(f"have commit {self.commit.hexsha}")
+        log.info("getting commit %s from %s", self.git_ref, self.repo)
+
+        try:
+            self.commit = self.repo.commit(self.git_ref)
+        except BadName as exc:
+            log.info("can't resolve %s, trying with origin/prefix", self.git_ref)
+            try:
+                self.commit = self.repo.commit("origin/" + self.git_ref)
+            except BadName:
+                raise exc from exc # throw the original error
+
+        log.info("have commit %s", self.commit.hexsha)
 
     def content(self, *p) -> bytes:
         file_path = path.join(self.root, *p)
