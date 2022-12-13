@@ -205,7 +205,8 @@ class InitCmd:
                     buckets = [create_option]
                     for bucket_name in s3_client.list_buckets()["Buckets"]:
                         name = bucket_name['Name']
-                        if s3_client.get_bucket_location(Bucket=name)['LocationConstraint'] == region:
+                        location = s3_client.get_bucket_location(Bucket=name)
+                        if (region == 'us-east-1' and location['LocationConstraint'] == None) or location['LocationConstraint'] == region:
                             buckets.append(name)
 
                     bucket_answer = inquirer.prompt([
@@ -225,12 +226,10 @@ class InitCmd:
 
                     clog(f"creating s3 bucket {self.bucket_name}")
 
-                    s3_client.create_bucket(
-                        Bucket=self.bucket_name,
-                        CreateBucketConfiguration={
-                            'LocationConstraint': region
-                        }
-                    )
+                    if region == 'us-east-1':
+                      s3_client.create_bucket(Bucket=self.bucket_name)
+                    else:
+                      s3_client.create_bucket(Bucket=self.bucket_name, CreateBucketConfiguration={'LocationConstraint': region})
 
                     s3_client.put_public_access_block(
                         Bucket=self.bucket_name,
