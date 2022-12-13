@@ -22,22 +22,14 @@ from yaml import safe_load
 from . import ConfigException, log, console, VERSION
 from .config_file import ConfigFile
 from .template_source import TemplateSource
-from .basic_stack import StackReference
 from .aws_config import AwsSettings
-
+from .stack_refs import StackRefs
+from .interpolated_dict import InterpolatedDict, InterpolationError
 
 class Config:
     """
     Represents a final, merged, configuration for a stack deployment.
     """
-
-    @dataclass
-    class InterpolationError:
-        """Captures information about an error occurring during evaluation of variables"""
-
-        key: str
-        value: str
-        error: str
 
     @dataclass
     class CoreSettings:
@@ -110,34 +102,9 @@ class Config:
                             self[key] = value  # Don't try and process this value as Jinja template
                         del vars[key]
                     except Exception:
-                        errors[key] = Config.InterpolationError(key, value, exc_info()[1])
+                        errors[key] = InterpolationError(key, value, exc_info()[1])
 
             return errors
-
-    class InterpolatedDict(dict):
-        def __init__(self, object: dict, vars: dict):
-            # Handle loading from empty YAML file (results in None), or a 'config group' (e.g. params)
-            # not being present - which is okay.
-            if not object:
-                return
-
-            if type(object) != dict:
-                raise Exception(object)
-
-            env = Environment(undefined=StrictUndefined, extensions=["jinja2_strcase.StrcaseExtension"])
-
-            for k, v in object.items():
-                try:
-                    if v == None:
-                        self[k] = None
-                    else:
-                        value = env.from_string(str(v)).render(vars)
-                        parsed_value = safe_load(value)
-                        if parsed_value != None:
-                            self[k] = parsed_value
-                except Exception as ex:
-                    raise (Exception(f"Unable to process {k}, value={object[k]} : {ex}"))
-
     class Tags(InterpolatedDict):
         def to_list(self, extra_attributes={}):
             ret_val = []
@@ -145,100 +112,6 @@ class Config:
                 ret_val.append({"Key": str(k), "Value": str(v), **extra_attributes})
             return ret_val
 
-    class StackRefs:
-        DEFAULTS = {"stack_name": "{{ environment }}-{{ name }}", "optional": False}
-
-        def __init__(self, stack_refs: dict, config: Config):
-            self.config = config
-            self.refs = stack_refs
-            log.debug("defined refs: %s" % self.refs)
-
-        def __contains__(self, name: str) -> bool:
-            return name in self.stacks()
-
-        def __getitem__(self, name: str) -> str:
-            return self.stack(name)
-
-        def exists(self, name: str):
-            return self[name].exists()
-
-        def output(self, name: str, output_name: str) -> str:
-            log.info(f"getting output {output_name} from stack {name}")
-            stack = self.stack(name)
-            if not stack.exists():
-                if stack.optional:
-                    log.info("stack does not exist, but is optional")
-                    return None
-                raise Exception(f"Stack config.refs[{name}] ({stack.name}) does not exist, but is required")
-
-            return stack.output(output_name)
-
-        def stack(self, name: str) -> StackReference:
-            """
-            Returns stack object, or None if stack is optional but is not found
-            """
-            stacks = self.stacks()
-            if name not in stacks:
-                stack_names = sorted(self.refs.keys())
-                raise Exception(f"Attempt to access stack {name}, but it's not defined in config.refs - only {', '.join(stack_names)} are defined")
-
-            return stacks.get(name)
-
-        @dataclass
-        class StackRefOpts:
-            stack_name: str
-            optional: bool
-
-        class OptionalStackReference(StackReference):
-            def __init__(self, aws: AwsSettings, name: str, optional: bool):
-                super().__init__(aws=aws, name=name)
-                self.optional = optional
-
-            def __getitem__(self, name: str) -> str:
-                return self.output(name)
-
-            def describe_stack(self):
-                """
-                For references, cache the describe_stack - we're not expecting
-                it to change.
-                """
-                if not hasattr(self, "_describe_stack_result"):
-                    self._describe_stack_result = super().describe_stack()
-                return self._describe_stack_result
-
-        def stacks(self) -> dict:
-            if not hasattr(self, "_stacks"):
-                # _stacks is dict of {name => StackReference() for each named stack. This includes
-                # stacks that don't exist.
-                self._stacks = dict()
-                for name, cfg in self.refs.items():
-                    if name == "environment":
-                        continue
-
-                    if not cfg:
-                        cfg = {}
-
-                    if not issubclass(type(cfg), dict):
-                        print(f"{name} is not a valid stack reference definition (from {self.refs})")
-                        exit(-1)
-
-                    # Try building dict of options. This can fail if interpolating incorrect variable or
-                    try:
-                        final_opts = Config.InterpolatedDict({**self.DEFAULTS, **cfg}, {"environment": self.config.environment, "name": name.replace("_", "-")})
-                    except Exception as ex:
-                        print(f"Unable to process settings for stack reference {name} -> {cfg} (from {self.refs})")
-                        exit(-1)
-
-                    try:
-                        log.info(f"stack reference {name}: {final_opts}")
-                        opts = self.StackRefOpts(**final_opts)
-                    except Exception as ex:
-                        log.exception(f"Invalid configuration for stack.refs '{name}' {self.refs}: {ex}", exc_info=ex)
-                        raise
-
-                    self._stacks[name] = self.OptionalStackReference(aws=self.config.aws, name=opts.stack_name, optional=opts.optional)
-
-            return self._stacks
 
     @dataclass
     class DeployMetadata:
@@ -296,7 +169,7 @@ class Config:
 
         # Most other config supports pulling stuff from AWS, so initialize this first
         try:
-            aws_settings = self.InterpolatedDict(includes.fetch_dict("aws", environment), {"environ": os.environ, "environment": environment})
+            aws_settings = InterpolatedDict(includes.fetch_dict("aws", environment), {"environ": os.environ, "environment": environment})
             self.aws = AwsSettings(**aws_settings)
             self.aws.get_account_id()  # force retrieval of account_id
         except TypeError as ex:
@@ -315,7 +188,7 @@ class Config:
         # Core settings impact the behavior of 'stk' - e.g. stack name, valid environments
         # etc.
         self.core = self.CoreSettings(
-            **self.InterpolatedDict(
+            **InterpolatedDict(
                 includes.fetch_dict("core", environment, self.CoreSettings.DEFAULTS),
                 default_vars,
             )
@@ -327,8 +200,8 @@ class Config:
         # Stack 'refs' object references external stacks. They are intended to be resolved by 'vars'/'params' so need to be
         # loaded first
         try:
-            refs = self.InterpolatedDict(includes.fetch_dict("refs", environment), {"environment": environment})
-            self.refs = self.StackRefs(refs, self)
+            refs = InterpolatedDict(includes.fetch_dict("refs", environment), {"environment": environment})
+            self.refs = StackRefs(refs, self)
         except Exception as ex:
             raise Exception("Unable to parse stack refs (refs:). have {refs}: {ex}")
         default_vars["refs"] = self.refs
@@ -341,10 +214,10 @@ class Config:
 
         params = includes.fetch_dict("params", environment)
         params.update(param_overrides)
-        self.params = self.InterpolatedDict(params, self.vars)
+        self.params = InterpolatedDict(params, self.vars)
         self.vars["params"] = self.params
 
-        template_source = self.InterpolatedDict(
+        template_source = InterpolatedDict(
             includes.fetch_dict(
                 "template",
                 environment,
