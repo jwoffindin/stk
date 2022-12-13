@@ -27,6 +27,7 @@ from .cfn_bucket import CfnBucket, Uploadable
 from .ignore_file import parse_ignore_list
 from .multipart_encoder import multipart_encode
 from .config import Config
+from .provider import GenericProvider
 
 
 @dataclass
@@ -55,7 +56,7 @@ def in_tmp_directory():
 
 
 class TemplateHelpers:
-    def __init__(self, provider, bucket: CfnBucket, custom_helpers: list, config: Config):
+    def __init__(self, provider: GenericProvider, bucket: CfnBucket, custom_helpers: list, config: Config):
         self.provider = provider
         self.bucket = bucket
         self.config = config
@@ -291,7 +292,10 @@ class TemplateHelpers:
 
         mod_file = str(Path("helpers", name).with_suffix(".py"))
 
+        log.debug("retrieving helper %s from provider", mod_file)
         content = self.provider.content(mod_file)
+
+        log.debug("writing helper code to %s", mod_file)
         open(mod_file, "wb").write(content)
 
         spec = importutil.spec_from_file_location(mod_name, mod_file)

@@ -122,7 +122,7 @@ def update(yes: bool, **kwargs):
     sc = TemplateCommand(**kwargs)
 
     if not sc.exists():
-        console.log(f"Stack {sc.name} does not exist")
+        console.log(f"Stack {sc.name} does not exist in {sc.config.aws.region}")
         exit(-1)
 
     sc.validate()
@@ -241,7 +241,7 @@ def delete_change_set(change_set_name: str, yes: bool, **kwargs):
 def delete(yes: bool, **kwargs):
     sc = StackDelegatedCommand(**kwargs)
     if not sc.exists():
-        console.log(f"Stack {sc.stack_name} does not exist", style="red")
+        console.log(f"Stack {sc.stack_name} does not exist in {sc.config.aws.region}", style="red")
         exit(-1)
 
     if not (yes or Confirm.ask(f"Delete stack {sc.stack_name} ?")):
@@ -299,7 +299,7 @@ def show_template(name: str, environment: str, config_path: str, template_path: 
 def diff(**kwargs):
     sc = TemplateCommand(**kwargs)
     if not sc.exists():
-        console.log(f"Stack {sc.name} does not exist", style="red")
+        console.log(f"Stack {sc.name} does not exist in {sc.config.aws.region}", style="red")
         return
 
     d = sc.diff(sc.template)
@@ -319,7 +319,7 @@ def outputs(**kwargs):
     console.log(f"Retrieving outputs for {sc.name}")
 
     if not sc.exists():
-        console.log(f"Stack {sc.name} does not exist", style="red")
+        console.log(f"Stack {sc.name} does not exist in {sc.config.aws.region}", style="red")
         return
 
     sc.show_outputs()
