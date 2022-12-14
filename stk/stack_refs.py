@@ -42,10 +42,20 @@ class OptionalStackReference:
         return self[name]
 
     def status(self):
+        """Delegated to stack"""
         return self.stack.status()
 
     def exists(self):
+        """Delegated to stack"""
         return self.stack.exists()
+
+    def description(self):
+        """Delegated to stack"""
+        return self.stack.description()
+
+    def outputs(self):
+        """Delegated to stack"""
+        return self.stack.outputs()
 
 class StackReferenceException(Exception):
     pass
@@ -110,7 +120,7 @@ class StackRefs:
     RESERVED_KEYS = ["environment"]
     def stacks(self) -> Dict[str, OptionalStackReference]:
         if self._stacks is None:
-            log.debug("building list of stack references")
+            log.debug("START - building list of stack references")
             # _stacks is dict of {name => OptionalStackReference() for each named stack. This includes
             # stacks that don't exist.
             self._stacks = {}
@@ -149,8 +159,17 @@ class StackRefs:
                     aws.region = opts.region
 
                 log.debug("Storing %s as optional stack reference", name)
-                self._stacks[name] = OptionalStackReference(name, StackReference(aws=aws, name=opts.stack_name), optional=opts.optional)
+                stack_ref = OptionalStackReference(name, StackReference(aws=aws, name=opts.stack_name), optional=opts.optional)
 
-                log.info("stack %s has the following outputs: %s", name, self._stacks[name].outputs())
+                self._stacks[name] = stack_ref
+                if stack_ref.exists():
+                    try:
+                        log.info("stack %s %s has the following outputs: %s", name, stack_ref.description(), stack_ref.outputs())
+                    except Exception as ex:
+                        log.exception("unable to get outputs for stack %s", name)
+                        raise ex
+                else:
+                    log.info("stack %s %s doesn't exist", name, stack_ref.description())
+            log.debug("DONE - building list of stack references")
 
         return self._stacks
