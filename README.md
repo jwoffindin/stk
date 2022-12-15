@@ -15,10 +15,10 @@
     STK
   </a>
 
-<h3 align="center">STK - Opinionated CloudFormation Deployments</h3>
+<h3 align="center">CloudFormation doesn't have to suck 😉</h3>
 
   <p align="center">
-    A "better" (well, opinionated at least) approach to managing AWS infrastructure with CloudFormation.</p>
+    STK - improved infrastructure management with CloudFormation.</p>
 </div>
 
 
@@ -53,16 +53,19 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-STK provides an opinionated framework for managing AWS infrastructure with CloudFormation.
+STK provides an opinionated framework for better management of your AWS infrastructure with CloudFormation.
 
-The two key benefits of using `stk` for CloudFormation management.
+Some benefits of using `stk` for CloudFormation management.
 
-* Decouple CloudFormation templates from configuration. This simplifies multi-environment and allows you to build up a library of reusable components.
-* Reduce change risk through improvded visibility. Use of Jinja2 for templates and use of explicit configuration (directly interpolated variables) over implicit configuration (AWS parameters) (more later) mean you can see exactly what is going to change.
+* Encourages **composition of infrastructure through re-use of small, modular, sharable CloudFormation templates** over monolithic, complex templates. Think "lego" for infrastructure. Put together these Lego blocks in any number of combinations to deliver the infrastructure your business requires.
+* **Decouple CloudFormation templates (code) from configuration**. It's as good for your infrastructure as it is for your applications. Templates are stored in external Git repositories separate from configuration. Compose from a variety of private and open source template repositories.
+* **Reduce change risk through improved visibility** and simpler templates. Use of Jinja2 for templates and use of explicit configuration (directly interpolated variables) over implicit configuration (AWS parameters) means you can see exactly what is going to change.
+
 ### Local installation (Python/Pip)
 
+STK is written in Python. Install it from GitHub using Python pip, or use the docker image for your CI/CD pipelines:
 
-> **Note**: 
+> **Note**:
 > Requires **python 3.10+**
 
 Install STK via pip
@@ -72,6 +75,9 @@ Install STK via pip
 Alternatively
 
     python3 -m pip install git+https://github.com/jwoffindin/stk.git
+
+Docker images are available from <https://hub.docker.com/repository/docker/johnwo/stk>.
+
 
 <!-- ### Docker
 
@@ -99,10 +105,10 @@ your AWS account:
 cfn config add vpc
 ```
 
-this will create a file `vpc.yml` with starter configuration. You can deploy with:
+this will create a file `vpc.yml` with starter configuration. You can deploy to AWS with:
 
 ```bash
-cfn create vpc dev
+cfn deploy vpc dev
 ```
 
 ### Concepts
@@ -115,10 +121,11 @@ The most common commands:
 
 * show-config
 * show-template
+* diff - show the proposed changes through text diff of current and proposed templates
 * validate
-* diff
 * create — deploy a new stack `cfn create <archetype> <environment>`
 * update - update an existing stack `cfn update <archetype> <environment>`
+* deploy - an alias for create/update commands ("upsert")
 
 ### Configuration file
 
@@ -587,6 +594,12 @@ See the [open issues](https://github.com/jwoffindin/stk/issues) for a full list 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+## Alternatives
+
+`stk` is rather opinionated about managing CloudFormation. If this approach doesn't work for you, check out these alternatives:
+
+* [Sceptre](https://github.com/Sceptre/sceptre) - a more mature project that takes a similar, less opinionated, approach to the problem. Supports stack sets. Only supports local (to the filesystem) templates.
+   > Sceptre is a tool to drive AWS CloudFormation. It automates the mundane, repetitive and error-prone tasks, enabling you to concentrate on building better infrastructure.
 
 
 <!-- CONTRIBUTING -->
