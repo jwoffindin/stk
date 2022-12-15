@@ -6,13 +6,12 @@ import functools
 import typing
 import json
 
-from dataclasses import dataclass
 from os import environ
 
 import click
 import boto3
 import yaml
-
+from click_aliases import ClickAliasedGroup
 from rich.table import Table
 from rich.prompt import Confirm
 from rich.padding import Padding
@@ -44,7 +43,7 @@ def common_stack_params(func):
     return wrapper
 
 
-@click.group(context_settings=CONTEXT_SETTINGS)
+@click.group(context_settings=CONTEXT_SETTINGS, cls=ClickAliasedGroup)
 @click.version_option(version=VERSION)
 def stk():
     """
@@ -157,7 +156,7 @@ def update(yes: bool, **kwargs):
             exit(-2)
 
 
-@stk.command()
+@stk.command(aliases=['deploy'])
 @common_stack_params
 @click.option("--yes", is_flag=True, show_default=True, default=False, help="Automatically approve changeset")
 @click.pass_context

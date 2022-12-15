@@ -17,7 +17,7 @@ setup(
     author="John Woffindin <j.woffindin@gmail.com>",
     version=version,
     url="https://github.com/jwoffindin/stk",
-    install_requires=["setuptools", "click", "boto3", "pyyaml", "jinja2", "rich", "cfn-flip", "gitpython", "giturlparse", "jinja2-strcase", "inquirer", "cryptography"],
+    install_requires=["setuptools", "click", "click-aliases", "boto3", "pyyaml", "jinja2", "rich", "cfn-flip", "gitpython", "giturlparse", "jinja2-strcase", "inquirer", "cryptography"],
     entry_points={
         "console_scripts": [
             "stk = stk.cli:stk",
