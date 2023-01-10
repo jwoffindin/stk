@@ -234,6 +234,7 @@ class GitProvider(GenericProvider):
 
     def _cache_path(self, url: giturlparse.parser.Parsed) -> str:
         cache_dir = os.environ.get("TEMPLATE_CACHE", ".template-cache")
+        log.debug(f"setting cache path from url {url}")
         return path.join(cache_dir, url.host, url.owner, *(url.groups), url.repo)  # type: ignore
 
 

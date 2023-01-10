@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
+from typing import Union
 
 import yaml
 
@@ -45,17 +46,16 @@ class ConfigFiles(list):
         print(msg + f" while processing {config_file.filename}: {err}")
         exit(-1)
 
-
-class ConfigFile(dict):
+class ConfigObject(dict):
+    """Base object representing a source of configuration - multiple ConfigObjects are merged to generate final configuration by ConfigFiles"""
     EXPECTED_KEYS = set(["aws", "core", "environments", "helpers", "includes", "params", "refs", "tags", "template", "vars"])
 
     # almost all keys can appear under 'environments:'... except environments
     EXPECTED_ENV_KEYS = EXPECTED_KEYS - set(['environments'])
 
-    def __init__(self, filename: str, config_dir: str):
-        self.config_dir = config_dir
-        self.filename = str(self._find_config_file(Path(filename)))
-
+    def __init__(self):
+        super().__init__()
+        self.filename = "anonymous"
         self["vars"] = {}
         self["params"] = {}
         self["includes"] = []
@@ -65,25 +65,6 @@ class ConfigFile(dict):
         self["template"] = {}
         self["tags"] = {}
 
-        try:
-            filepath = Path(config_dir, self.filename)
-            cfg = yaml.safe_load(open(filepath)) or dict()
-        except yaml.parser.ParserError as ex:
-            log.fatal(f"Unable to load configuration file {filepath}", exc_info=ex)
-            raise
-
-        # hack 'template: [ name: 'template_name' } shortcut
-        if "template" in cfg and type(cfg["template"]) == str:
-            cfg["template"] = {"name": cfg["template"]}
-
-        # check that an environment matching one of the reserved keys isn't defined - highly
-        # likely that user has fat-fingered their config
-        reserved_env_errors = self.EXPECTED_KEYS & set(self["environments"].keys())
-        if reserved_env_errors:
-            raise Exception(f"{self.filename} has defined environments {reserved_env_errors}; these are reserved")
-
-        super().__init__(cfg)
-        self._ensure_valid_keys()
 
     def _ensure_valid_keys(self):
         """
@@ -114,22 +95,6 @@ class ConfigFile(dict):
         """
         return self["environments"].get(environment, None) or {}
 
-    def includes(self):
-        """
-        Returns list of included files (relative to config dir). Files will be given .yml extension
-        if they don't have an extension already
-        """
-        includes = self["includes"]
-        if type(includes) != list:
-            raise Exception(f"{self.filename} invalid `includes` directive. Expect a list, got a {type(includes)}")
-
-        # Build a list of ['include/file-1.yml', 'include/file-2.yml]...
-        include_paths = []
-        for included in includes:
-            p = self._find_config_file(Path("includes", included))
-            include_paths.append(str(p))
-        return include_paths
-
     def validate(self, valid_environments):
         if "environments" in self:
             defined_envs = set(self["environments"].keys())
@@ -139,16 +104,76 @@ class ConfigFile(dict):
                 valid_envs = ", ".join(valid_environments)
                 raise Exception(f"{self.filename} defines environments {invalid_envs}, which are not listed in core.environments ({valid_envs})")
 
-    def load_includes(self) -> list:
+    def _post_init(self, cfg: Union[dict, None]):
+        # hack 'template: [ name: 'template_name' } shortcut
+        if cfg and "template" in cfg and isinstance(cfg["template"], str):
+            cfg["template"] = {"name": cfg["template"]}
+
+        if cfg:
+            log.debug("ConfigObject: initializing from %s", cfg)
+            self.update(cfg)
+
+        # check that an environment matching one of the reserved keys isn't defined - highly
+        # likely that user has fat-fingered their config
+        reserved_env_errors = self.EXPECTED_KEYS & set(self["environments"].keys())
+        if reserved_env_errors:
+            raise Exception(f"{self.filename} has defined environments {reserved_env_errors}; these are reserved")
+
+        self._ensure_valid_keys()
+
+
+
+class ConfigDocument(ConfigObject):
+    """A static document representing configuration - used to allow user to provide overrides"""
+    def __init__(self, config: Union[dict, None]):
+        super().__init__()
+        self._post_init(config)
+
+class ConfigFile(ConfigObject):
+    """A ConfigObject loaded from file (in the config dir)"""
+    def __init__(self, filename: str, config_dir: str):
+        super().__init__()
+        self.config_dir = config_dir
+        self.filename = str(self._find_config_file(Path(filename)))
+
+        filepath = Path(config_dir, self.filename)
+        try:
+            cfg = yaml.safe_load(open(filepath, "r", encoding="utf-8")) or dict()
+        except yaml.parser.ParserError as ex:
+            log.fatal("Unable to load configuration file %s", filepath, exc_info=ex)
+            raise
+
+        self._post_init(cfg)
+
+    def includes(self):
         """
-        Returns list of config files with highest precedence last (lowest first)
+        Returns list of included files (relative to config dir). Files will be given .yml extension
+        if they don't have an extension already
         """
-        includes = self._load_includes(set())
-        return ConfigFiles(include for include in includes if include)
+        includes = self["includes"]
+        if not isinstance(includes, list):
+            raise Exception(f"{self.filename} invalid `includes` directive. Expect a list, got a {type(includes)}")
+
+        # Build a list of ['include/file-1.yml', 'include/file-2.yml]...
+        include_paths = []
+        for included in includes:
+            p = self._find_config_file(Path("includes", included))
+            include_paths.append(str(p))
+        return include_paths
+
+
+    def load_includes(self, overrides: Union[ConfigFiles, None]) -> ConfigFiles:
+        """
+        Returns list of config objects with highest precedence last (lowest first)
+        """
+        config_objects = ConfigFiles([include for include in self._load_includes(seen = set()) if include])
+        if overrides:
+            config_objects.extend(overrides)
+        return config_objects
 
     def _load_includes(self, seen) -> list:
         """
-        Recursive loading of includes. Returns a list with lowest-precedence first.j
+        Recursive loading of includes. Returns a list with lowest-precedence first.
 
         E.g. if A includes B, and B includes C then a._load_includes() returns [C, B, A]
         """

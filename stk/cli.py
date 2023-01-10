@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import functools
-import typing
 import json
 
+from typing import List
 from os import environ
 
 import click
@@ -36,6 +36,7 @@ def common_stack_params(func):
     @click.option("--template-path", default=environ.get("TEMPLATE_PATH", "."), help="Path to templates")
     @click.option("--var", help="override configuration variable", multiple=True)
     @click.option("--param", help="override CFN parameter", multiple=True)
+    @click.option("--overrides", help="override generic config")
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
@@ -82,7 +83,7 @@ def create(yes: bool, **kwargs):
 
     console.log("Creating stack", sc.stack_name, style="blue")
 
-    with console.status("Validating template") as status:
+    with console.status("Validating template"):
         sc.validate()
 
     change_set = sc.create_change_set()
@@ -97,7 +98,7 @@ def create(yes: bool, **kwargs):
 
     if yes or Confirm.ask(f"Create stack {sc.stack_name} ?"):
         console.rule()
-        console.log(f"Applying change set")
+        console.log("Applying change set")
         change_set.execute()
         if sc.wait("stack_create_complete", change_set.resources()):
             console.log("Stack created successfully", style="green")
@@ -144,7 +145,7 @@ def update(yes: bool, **kwargs):
 
     if yes or Confirm.ask(f"Update stack {sc.stack_name} ?"):
         console.rule()
-        console.log(f"Applying change set")
+        console.log("Applying change set")
 
         change_set.execute()
         if sc.wait("stack_update_complete", change_set.resources()):
@@ -213,7 +214,7 @@ def execute_change_set(change_set_name: str, **kwargs):
         console.log(":+1: Change set complete", emoji=True, style="green")
         if sc.outputs():
             sc.show_outputs()
-    except sc.cfn.exceptions.ChangeSetNotFoundException as ex:
+    except sc.cfn.exceptions.ChangeSetNotFoundException:
         console.log(":x: Change set does not exist", emoji=True, style="red")
 
 
@@ -221,7 +222,7 @@ def execute_change_set(change_set_name: str, **kwargs):
 @common_stack_params
 @click.argument("change_set_name")
 @click.option("--yes", is_flag=True, show_default=True, default=False, help="Automatically approve changeset")
-def delete_change_set(change_set_name: str, yes: bool, **kwargs):
+def delete_change_set(change_set_name: str, yes: bool, **kwargs): # pylint: disable=unused-argument
     """
     Deletes named change set.
     """
@@ -230,7 +231,7 @@ def delete_change_set(change_set_name: str, yes: bool, **kwargs):
     try:
         sc.delete_change_set(change_set_name=change_set_name)
         console.log("Change set deleted")
-    except sc.cfn.exceptions.ChangeSetNotFoundException as ex:
+    except sc.cfn.exceptions.ChangeSetNotFoundException:
         console.log(":x: Change set does not exist", style="red", emoji=True)
 
 
@@ -255,16 +256,16 @@ def delete(yes: bool, **kwargs):
 
 @stk.command()
 @common_stack_params
-@click.option("--format", default="yaml", help="Force conversion of resulting template (json or yaml)")
+@click.option("--format", "format_", default="yaml", help="Force conversion of resulting template (json or yaml)")
 @click.option("--output-file", default="", help="Write resulting template to file")
-def show_template(name: str, environment: str, config_path: str, template_path: str, format: str, output_file: str, var: typing.List, param: typing.List):
+def show_template(name: str, environment: str, config_path: str, template_path: str, format_: str, output_file: str, var: List, param: List, overrides: str):
+    config_overrides = parse_overrides(var, param, overrides)
     config = Config(
         name=name,
         environment=environment,
         config_path=config_path,
         template_path=template_path,
-        var_overrides=parse_overrides(var),
-        param_overrides=parse_overrides(param),
+        overrides=config_overrides,
     )
     template = TemplateWithConfig(
         provider=config.template_source.provider(), config=config)
@@ -278,17 +279,16 @@ def show_template(name: str, environment: str, config_path: str, template_path: 
 
     result = str(result)
 
-    if format == "yaml":
+    if format_ == "yaml":
         pass
-    elif format == "json":
+    elif format_ == "json":
         result = json.dumps(yaml.safe_load(result), indent=4, sort_keys=True)
     else:
         raise Exception("Unknown output format")
 
     if output_file:
-        fh = open(output_file, "w")
-        fh.write(result)
-        fh.close()
+        with open(output_file, "w", encoding="utf-8") as file:
+            file.write(result)
     else:
         console.print(result)
 
@@ -326,9 +326,8 @@ def outputs(**kwargs):
 
 @stk.command()
 @common_stack_params
-def show_config(name: str, environment: str, config_path: str, template_path: str, var: typing.List, param: typing.List):
-    config = Config(name=name, environment=environment, config_path=config_path,
-                    var_overrides=parse_overrides(var), param_overrides=parse_overrides(param))
+def show_config(name: str, environment: str, config_path: str, template_path: str, var: List, param: List, overrides: str):
+    config = Config(name=name, environment=environment, config_path=config_path, overrides=parse_overrides(var, param, overrides))
 
     template = config.template_source
     template_table = Table("Property", "Value", title="Template Source")
@@ -342,10 +341,10 @@ def show_config(name: str, environment: str, config_path: str, template_path: st
         v = params[k]
         params_table.add_row(k, str(v), type(v).__name__)
 
-    vars = config.vars
+    cfg_vars = config.vars
     vars_table = Table("Variable", "Value", "Type", title="Variables")
-    for k in sorted(vars.keys()):
-        v = vars[k]
+    for k in sorted(cfg_vars.keys()):
+        v = cfg_vars[k]
         vars_table.add_row(k, str(v), type(v).__name__)
 
     tags = config.tags

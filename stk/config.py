@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from sys import exc_info
+from typing import Union
 
 import git
 
@@ -20,7 +21,7 @@ from rich.table import Table
 from yaml import safe_load
 
 from . import ConfigException, log, console, VERSION
-from .config_file import ConfigFile
+from .config_file import ConfigFiles, ConfigFile
 from .template_source import TemplateSource
 from .aws_config import AwsSettings
 from .stack_refs import StackRefs
@@ -145,9 +146,8 @@ class Config:
         name: str,
         environment: str,
         config_path: str,
-        template_path: str = None,
-        var_overrides: dict = {},
-        param_overrides: dict = {},
+        overrides: ConfigFiles,
+        template_path: Union[str, None] = None,
     ):
         # While we should just receive `name`, we may be be passed
         name = str(Path(name).with_suffix(""))
@@ -157,23 +157,25 @@ class Config:
 
         try:
             cfg = ConfigFile(filename=name, config_dir=self.config_path)
+            log.debug("loaded initial config file %s from %s: %s", name, self.config_path, cfg, extra={"cfg": cfg})
         except FileNotFoundError as err:
-            raise Exception(f"Configuration file {name} not found in {config_path}: {err}")
+            raise Exception(f"Configuration file {name} not found in {config_path}: {err}") from err
 
         # Validate specified environment is defined in the top-level config file
         if environment not in cfg.environments():
             raise ConfigException(f"Environment {environment} is not a valid environment for {cfg.filename}. Only {cfg.environments()} permitted.")
 
         # Load top-level config file and all included configs
-        includes = cfg.load_includes()
+        includes = cfg.load_includes(overrides)
 
         # Most other config supports pulling stuff from AWS, so initialize this first
+        aws_settings = {}
         try:
             aws_settings = InterpolatedDict(includes.fetch_dict("aws", environment), {"environ": os.environ, "environment": environment})
             self.aws = AwsSettings(**aws_settings)
             self.aws.get_account_id()  # force retrieval of account_id
         except TypeError as ex:
-            raise Exception(f"Unable to parse aws settings: have {aws_settings}: {ex}")
+            raise Exception(f"Unable to parse aws settings: have {aws_settings}: {ex}") from ex
 
         default_vars = {
             "__config_dir": pathlib.Path(config_path),
@@ -203,17 +205,15 @@ class Config:
             refs = InterpolatedDict(includes.fetch_dict("refs", environment), {"environment": environment})
             self.refs = StackRefs(refs, self)
         except Exception as ex:
-            raise Exception("Unable to parse stack refs (refs:). have {refs}: {ex}")
+            raise Exception("Unable to parse stack refs (refs:). have {refs}: {ex}") from ex
         default_vars["refs"] = self.refs
 
         self.helpers = list(includes.fetch_set("helpers", environment))
 
         pre_vars = includes.fetch_dict("vars", environment, default_vars)
-        pre_vars.update(var_overrides)
         self.vars = self.Vars(pre_vars)
 
         params = includes.fetch_dict("params", environment)
-        params.update(param_overrides)
         self.params = InterpolatedDict(params, self.vars)
         self.vars["params"] = self.params
 

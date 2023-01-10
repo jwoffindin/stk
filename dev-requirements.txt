@@ -1,16 +1,6 @@
-boto3==1.21.38
-click
 pytest
-pyyaml
-jinja2
-rich
-cfn-flip
 moto
 docker # seems to be required for moto
-cfn-lint # moto requirement (for cfn validation)
-gitpython # access templates over git
-git-url-parse
-jinja2-strcase
 
 # Test libraries that allow for efficient loop-testing of
 #

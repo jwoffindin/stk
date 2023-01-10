@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 
-from typing import List
+from typing import List, Union
 from cfn_tools import load_yaml
 from jinja2 import Environment, StrictUndefined, nodes
 from jinja2.ext import Extension
@@ -148,7 +148,7 @@ class Template:
         self.provider = provider
         self.helpers = helpers
 
-    def render(self, vars: dict, fail_on_error: bool = False) -> str:
+    def render(self, vars: dict, fail_on_error: bool = False) -> Union[RenderedTemplate, FailedTemplate]:
         raw_template = str(self.provider.template(), "utf-8")
 
         content = None
@@ -199,5 +199,5 @@ class TemplateWithConfig(Template):
 
         super().__init__(name=config.template_source.name, provider=provider, helpers=helpers)
 
-    def render(self, fail_on_error: bool = False) -> str:
+    def render(self, fail_on_error: bool = False) -> Union[RenderedTemplate, FailedTemplate]:
         return super().render(self.vars, fail_on_error=fail_on_error)
