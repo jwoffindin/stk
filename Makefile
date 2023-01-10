@@ -31,7 +31,7 @@ untag:
 ifeq ($(shell git status --porcelain),)
 tag:
 	test $(shell git branch --show-current) == "main"
-	git tag -a $(VERSION) -m 'release version $(VERSION)'
+	git tag -s -a $(VERSION) -m 'release version $(VERSION)'
 	git push origin $(VERSION)
 
 release: tag docker-build
