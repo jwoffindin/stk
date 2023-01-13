@@ -39,6 +39,9 @@ release: tag docker-build
 ifneq ($(IS_FINAL),)
 	docker tag johnwo/stk:$(VERSION) johnwo/stk:latest
 	docker push johnwo/stk:latest
+else
+	docker tag johnwo/stk:$(VERSION) johnwo/stk:unstable
+	docker push johnwo/stk:unstable
 endif
 else
 release:

@@ -7,7 +7,7 @@ import yaml
 from os import environ
 from rich.console import Console
 
-VERSION = "0.13.0rc1"
+VERSION = "0.13.0rc2"
 
 # Create application logger (for when things go wrong)
 log = logging.getLogger('cfn')
