@@ -3,6 +3,7 @@ Provides `Config` class which handles the loading of configuration and
 exposing derived state.
 """
 from __future__ import annotations
+import json
 
 import pathlib
 import re
@@ -41,10 +42,14 @@ class Config:
 
         # Attributes
         stack_name: str
+        encode_params: bool
         environments: list = None
 
         # DEFAULTS are pre-interpolation values so can't set them via attributes
-        DEFAULTS = {"stack_name": "{{ environment }}-{{ name.replace('/', '-') }}"}
+        DEFAULTS = {
+            "encode_params": False,
+            "stack_name": "{{ environment }}-{{ name.replace('/', '-') }}"
+        }
 
         # stack name
         valid_stack_name = re.compile("^[a-zA-Z0-9-]+$").match
@@ -215,6 +220,8 @@ class Config:
 
         params = includes.fetch_dict("params", environment)
         self.params = InterpolatedDict(params, self.vars)
+        if self.core.encode_params:
+            self.encode_param_values(self.params)
         self.vars["params"] = self.params
 
         template_source = InterpolatedDict(
@@ -251,3 +258,13 @@ class Config:
 
     def param(self, name):
         return self.params.get(name)
+
+    def encode_param_values(self, params):
+        """
+        JSON-encode any CFN *parameters* that aren't strings. Enabled by
+        setting `core.encode_params`. Useful if you want to pass structured
+        data as JSON to the template (e.g. setting parameters, or secrets).
+        """
+        for k, value in params.items():
+            if not isinstance(value, str):
+                params[k] = json.dumps(value)

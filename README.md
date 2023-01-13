@@ -392,6 +392,19 @@ Good use cases include:
 * passing secrets
 * (that's about it?)
 
+Parameters can be automatically JSON-encoded (for non-string values), by setting
+`core.encode_params` to `true`. This will simplify passing JSON-style data as parameters.
+
+For example:
+
+```
+core:
+  encode_params: true
+
+params:
+  someComplexValue: { "key": "value" }
+```
+
 ### `vars:`
 
 Jinja2 variables/values passed to the template.
