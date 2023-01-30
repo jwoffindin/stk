@@ -23,7 +23,7 @@ else:
 
 # Console logger is for displaying updates to user - normal
 # events.
-console = Console(emoji=False, log_path=False)
+console = Console(emoji=False, log_path=False, stderr=True)
 clog = console.log
 
 # This makes yaml.dump() output `foo: ` rather than `foo: null`
