@@ -133,13 +133,15 @@ class Config:
             else:
                 self.template = "/".join([template_source.root, template_source.name])
 
-            # Config git HEAD state
+            # Config git HEAD state - this is optional. The config project may
+            # not be stored in git. Also, if config is in a subdirectory, we'd
+            # too dumb to try and find git repo in a parent directory.
             try:
                 config_head = git.Repo(config_path).head
                 self.config_sha = str(config_head.commit.hexsha)
                 self.config_ref = str(config_head.reference)
-            except Exception as ex:
-                log.warning("Unable to retrieve git info for config project", exc_info=ex)
+            except Exception as ex:  # pylint: disable=broad-except
+                log.debug("Unable to retrieve git info for config project", exc_info=ex)
                 self.config_sha = "?"
                 self.config_ref = "?"
 
