@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Union
+from typing import Dict, Union
 
 from botocore.exceptions import ClientError
 
@@ -24,7 +24,7 @@ class BasicStack:
         if stack:
             return stack["StackStatus"]
 
-    def outputs(self) -> dict:
+    def outputs(self) -> Union[Dict[str, BasicStack.Output], None]:
         """Return all outputs for a stack"""
         if not hasattr(self, "__outputs"):
             self.__outputs = self.__get_outputs()
@@ -65,7 +65,7 @@ class BasicStack:
             obj.description = description
             return obj
 
-    def __get_outputs(self) -> Union[dict, None]:
+    def __get_outputs(self) -> Union[Dict[str, BasicStack.Output], None]:
         stack = self.describe_stack()
         if not stack:
             return None

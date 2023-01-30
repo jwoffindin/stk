@@ -37,6 +37,7 @@ def common_stack_params(func):
     @click.option("--var", help="override configuration variable", multiple=True)
     @click.option("--param", help="override CFN parameter", multiple=True)
     @click.option("--overrides", help="override generic config")
+    @click.option("--outputs-format", type=click.Choice(['table', 'json', 'yaml'], case_sensitive=False), default="table", help="Force conversion of resulting template (json, yaml or table)")
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
@@ -258,7 +259,7 @@ def delete(yes: bool, **kwargs):
 @common_stack_params
 @click.option("--format", "format_", default="yaml", help="Force conversion of resulting template (json or yaml)")
 @click.option("--output-file", default="", help="Write resulting template to file")
-def show_template(name: str, environment: str, config_path: str, template_path: str, format_: str, output_file: str, var: List, param: List, overrides: str):
+def show_template(name: str, environment: str, config_path: str, template_path: str, format_: str, output_file: str, outputs_format: str, var: List, param: List, overrides: str):
     config_overrides = parse_overrides(var, param, overrides)
     config = Config(
         name=name,
@@ -313,6 +314,7 @@ def diff(**kwargs):
 @stk.command()
 @common_stack_params
 def outputs(**kwargs):
+    """Command to display stack outputs"""
     sc = StackDelegatedCommand(**kwargs)
 
     console.log(f"Retrieving outputs for {sc.name}")
@@ -326,7 +328,7 @@ def outputs(**kwargs):
 
 @stk.command()
 @common_stack_params
-def show_config(name: str, environment: str, config_path: str, template_path: str, var: List, param: List, overrides: str):
+def show_config(name: str, environment: str, config_path: str, template_path: str, outputs_format: str, var: List, param: List, overrides: str):
     config = Config(name=name, environment=environment, config_path=config_path, overrides=parse_overrides(var, param, overrides))
 
     template = config.template_source
