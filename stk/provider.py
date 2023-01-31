@@ -49,6 +49,12 @@ class FilesystemProvider(GenericProvider):
     root: str
 
     def __post_init__(self):
+        # Provider needs to work with absolute paths; $CWD is changed during
+        # various processing changes, so specifying relative template path
+        # breaks helpers etc.
+        self.root = path.abspath(self.root)
+
+        # Check the path actually exists
         if not Path(self.root).is_dir:
             raise Exception(f"{self.root} does not appear to be a directory")
 
