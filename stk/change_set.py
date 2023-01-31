@@ -5,6 +5,7 @@ from botocore.exceptions import WaiterError
 from rich.table import Table
 from rich import box
 
+from . import log
 from .stack_waiter import StackWaiter
 from .template import RenderedTemplate
 from .basic_stack import BasicStack
@@ -25,6 +26,8 @@ class ChangeSet:
         parameters = []
         for key, value in params.items():
             parameters.append({"ParameterKey": key, "ParameterValue": value})
+
+        log.debug("creating change set", extra={"parameters": parameters})
 
         self.cfn.create_change_set(
             StackName=stack.name,

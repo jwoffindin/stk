@@ -111,13 +111,13 @@ class Config:
                         errors[key] = InterpolationError(key, value, exc_info()[1])
 
             return errors
+
     class Tags(InterpolatedDict):
         def to_list(self, extra_attributes={}):
             ret_val = []
             for k, v in self.items():
                 ret_val.append({"Key": str(k), "Value": str(v), **extra_attributes})
             return ret_val
-
 
     @dataclass
     class DeployMetadata:
@@ -224,6 +224,7 @@ class Config:
         self.params = InterpolatedDict(params, self.vars)
         if self.core.encode_params:
             self.encode_param_values(self.params)
+        log.debug("setting parameters: %s", self.params)
         self.vars["params"] = self.params
 
         template_source = InterpolatedDict(
