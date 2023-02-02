@@ -34,7 +34,7 @@ class TemplateCommand(StackDelegatedCommand):
         if not template.error:
             errors = self.stack.validate(template)
             if errors:
-                console.log(f"{errors}\n\n", style="red")
+                console.log(f"{errors}\n\n", style="red", markup=False)
                 console.log(
                     ":x: Template is NOT ok - failed validation", emoji=True, style="red")
                 console.print(str(self.template))
