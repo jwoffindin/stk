@@ -21,36 +21,6 @@
     STK - improved infrastructure management with CloudFormation.</p>
 </div>
 
-
-<!-- TABLE OF CONTENTS -->
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
-  </ol>
-</details>
-
-
-
-<!-- ABOUT THE PROJECT -->
 ## About The Project
 
 STK provides an opinionated framework for better management of your AWS infrastructure with CloudFormation.
@@ -77,11 +47,6 @@ Alternatively
     python3 -m pip install git+https://github.com/jwoffindin/stk.git
 
 Docker images are available from <https://hub.docker.com/repository/docker/johnwo/stk>.
-
-
-<!-- ### Docker
-
-    alias cfn="docker run --rm -it -v ~/.aws:/root/.aws -v ~/.ssh:/root/.ssh -v $TEMPLATE_PATH:/templates -v $CONFIG_PATH:/config johnwo/stk:latest" -->
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -111,25 +76,36 @@ this will create a file `vpc.yml` with starter configuration. You can deploy to 
 cfn deploy vpc dev
 ```
 
-### Concepts
+
+## Terminology
+
+* **Environment**. What “level” are deploying a stack. E.g. development, test, stage, production, etc.
+* **Template**. A YAML CloudFormation template (with Jinja2 templates, so yes — we're templating templates).
+* **Archetype**. A common architectural building block that we deploy into each tier. I.e. same business function, but in dev, test, stage etc.
+* **Configuration File**. A YAML file that defines what CloudFormation stacks are to be deployed. There are two flavours
+  of configuration file:
+  * Top-level configuration files. These define what *environments* a given stack can be deployed - i.e. 1:1 mapping of top-level config files to *archetype*.
+  * Include files. These are YAML files, mostly same structure as top-level configuration, but exist only to reduce copy
+    & paste between top-level configuration files. These are stored in an `includes/` directory.
+* **Stack**. A CloudFormation stack. For our purpose, it is an instance of an Archetype - i.e. template + configuration file + tier.
 
 ## Commands
 
 A full list of commands are available by running `stk help`
 
-The most common commands:
+The most common commands that you would use are listed below. They are invoked as `cfn <command> <config-file> <environment>`
 
-* show-config
-* show-template
-* diff - show the proposed changes through text diff of current and proposed templates
-* validate
-* create — deploy a new stack `cfn create <archetype> <environment>`
-* update - update an existing stack `cfn update <archetype> <environment>`
-* deploy - an alias for create/update commands ("upsert")
+* `show-config` - show configuration that will be passed to a template.
+* `show-template` - displays resulting CloudFormation template by applying configuration to template.
+* `diff` - show the proposed changes between locally rendered CloudFormation Template and the currently deployed template. Displays a text diff between current and proposed templates
+* `validate` - validates that a template is ready to be deployed. Performs validation of configuration and template, as well as submitting the template to AWS CloudFormation APIs for validation.
+* `create` — deploys a new stack. Will fail if the stack exists already.
+* `update` - update an existing stack
+* `deploy` - an alias for create/update commands ("upsert"). Will update if the stack exists already, otherwise it will create a new stack.
 
 ### Configuration file
 
-A configuration file is simply a YAML file used to that declares:
+A configuration file is simply a YAML file that declares:
 
 * How we deploy a CloudFormation template into an AWS account.
 * Any configuration required for the template.
@@ -148,25 +124,24 @@ environments:
   prod:
 ```
 
-This configuration file will allow us to deploy dev, test and prod instances of a CloudFormation template
+This configuration file will allow us to deploy `dev`, `test` and `prod` instances of a CloudFormation stack from the template
 `foo.yaml` into the `ap-southeast-2 `region.
 
-Will create a stack called foo-dev in ap-southeast-2 using default profile and/or environment credentials.
+Do deploy this stack `foo-dev` into `ap-southeast-2` using default credentials.
 
 ```sh
-stk create foo dev
+stk deploy foo dev
 ```
 
-Create and apply a change set to the 'foo-test' stack in ap-southeast-2 region.
+Create and apply a change set to the `foo-test` stack in ap-southeast-2 region.
+
 ```sh
 stk update foo test
 ```
 
 ### CloudFormation Templates
 
-The CloudFormation templates are YAML (JSON may work, I've not tried it)
-
-The templates are processed using `Jinja2` and any variables declared in `vars:` section of a config file are available.
+The CloudFormation templates are YAML (JSON may work, I've not tried it). They are processed through `Jinja2` (much as is done with Ansible). Any variables declared in `vars:` section of a config file are available within the template.
 
 For example:
 
@@ -186,7 +161,7 @@ Description: |
   I'd like to say {{ greeting }}, to you all
 ```
 
-To avoid confusion between YAML comments and Jinja2 block level operations, we use a `##` for Jinja2. For example, if we want to allow `greeting` to be optional:
+To avoid confusion between YAML comments and Jinja2 block level operations, `stk` uses a `##` for Jinja2. For example, if we want to allow `greeting` to be optional, the template would look like:
 
 ```yaml
 # $TEMPLATE_PATH/foo.yaml
@@ -200,57 +175,188 @@ Description: |
 
 ## Configuration
 
+Configuration is generally stored in a different git repository from the actual templates. In the following examples, `$CONFIG_DIR` is used to represent where configuration files are stored, and `$TEMPLATE_DIR` where the CloudFormation templates live.
 ### Structure
 
-The top-level keys that can be declared in a configuration files are:
+The top-level keys that can be declared in a configuration file are:
 
-```yaml
-# Include other configuration. Allows composition and sharing of common configuration
-# Two common use cases — (1) environment specific configuration, and (2) deploying multiple stacks
-# from the same template
+* `includes` - include additional configuration files
+* `template` - where to find the CloudFormation template
+* `params` - AWS CloudFormation parameter definitions
+* `vars` - Configuration variables (Jinja2)
+* `refs` - Retrieve information from other CloudFormation stacks
+* `tags` - Default tags to apply to the CloudFormation stack
+* `aws` - Defines how to connect to AWS, what region to deploy etc.
+* `environments` - Environment-specific overrides.
+* `helpers` - Supports defining Python helpers in templates for more complex logic.
+* `core` - Adjust some core `stk` settings.
+
+These are explained in more detail below.
+
+#### `includes`
+
+Allows composition and sharing of common configuration to reduce unnecessary duplication.
+
+It is a list of YAML files loaded from `includes/` directory. The `.yml`/`.yaml` extension is optional.
+
+Includes are listed in highest-to-lowest precedence. Settings defined in any include file have a lower precedence than the current file.
+
+
+```
+# sample.yml
 includes:
+  - a
+  - b
 
-# Where to find the CloudFormation template. Supports local files, local git repositories
-# or remote git repositories.
-template:
-
-# AWS Parameters that are passed into a stack. Minimize if possible, use `vars` instead.
-# Good use cases include:
-# * passing secrets
-# * (that's about it?)
-params:
-
-# Jinja2 variables/values passed to the template. Preferred way to manage configuration - e.g.
-# use template conditions rather than 'native' AWS Template Conditions - they are unwieldy and
-# can make changes hard to reason about.
+# includes/a.yml
 vars:
+  foo: 'a'
 
-# References to other stacks. E.g. feeding in outputs from another stack into this one.
-refs:
-
-# Tags that are applied to the stack (and thus resources within the stack)
-tags:
-
-# Information about the AWS account being deployed into. At a minimum needs region and
-# s3 bucket for uploading deployment artifacts.
-aws:
-
-# If deploying into multiple environments, any environment-specific configuration goes here.
-# You need to declare at least one environment in a top-level configuration file.
-environments:
-
-# Custom helper functions may be used by templates. Since we're injecting code into our runtime, the
-# configuration file must explicitly declare any helpers here.
-helpers:
-
-# Configuration that changes behavior of the 'stk' application rather configuration/template
-# deployment.
-core:
+# includes/b.yml
+vars:
+  foo: 'b'
 ```
 
-### Interpolation
+Two common use cases for include files are:
 
-Configuration values can also include Jinja2 interpolation (although the file itself is *not* a Jinja template). Many
+1. Environment specific configuration - e.g. AWS account details
+1. Where multiple config files use the sample template with common settings.
+
+
+### `template`
+
+Defines where to stk can find the CloudFormation template. Supports local files, local git repositories and remote git repositories.
+
+Templates are typically stored separately to the configuration project so they can be shared between teams.
+Well-written templates are re-usable components that can be composed to build your final architecture (again, think Lego blocks).
+
+The sources for templates are:
+#### Plain filesystem (not git)
+
+If `version` is not set, then the templates are assumed to come from local filesystem - useful
+when developing templates or where templates don't need to be reused. In this case, set `root` to path.
+
+E.g.
+
+    environments:
+      dev:
+        template:
+          version:
+          root: ./templates
+
+During development, you can use an environment variable to define the template location:
+
+    environments:
+      dev:
+        template:
+          version:
+          root: {{ environ['TEMPLATE_PATH'] }}
+
+#### Local Git Repository
+
+Similar to above, but uses current commit `HEAD` in local filesystem:
+
+    environments:
+      dev:
+        template:
+          version: HEAD
+          repo: {{ environ['TEMPLATE_PATH'] }}
+
+#### Remote Git Repository
+
+Remote repositories are also supported. For example, the following will use `main` branch of a github repository:
+
+    template:
+      version: main
+      repo: git@github.com:jwoffindin/stk-templates.git
+
+Note: `stk` creates a `.template-cache` directory when run - it's highly recommended that you add this to your `.gitignore` file.
+
+
+
+### `params`
+
+AWS Parameters that are passed into a stack. Minimize if possible, use `vars` instead.
+
+Good use cases for `Params` include:
+ * passing secrets
+ ...
+ * (that's about it?)
+
+Example:
+
+```
+params:
+  MySubnetId: sub-0123456789
+```
+
+Params values are usually environment-specific. They can be overridden on a per environment basis, as illustrated in the following example:
+
+```
+params:
+  MySubnetId: sub-0123456789
+
+environments:
+  dev:
+  test:
+  stage:
+    params:
+      MySubnetId: sub-abcdef
+```
+
+In this case deployments of `dev` and `test` will have `MySubnetId` of `sub-0123456789` (the default), and `stage` will be `sub-abcdef`
+
+Parameters can be automatically JSON-encoded (for non-string values), by setting
+`core.encode_params` to `true`. This will simplify passing JSON-style data as parameters.
+
+For example:
+
+```
+core:
+  encode_params: true
+
+params:
+  someComplexValue: { "key": "value" }
+```
+
+
+### `vars`
+
+Jinja2 variables/values primarily used to pass configuration to to the CloudFormation Template.
+
+`vars are the preferred way to manage configuration (as opposed to `params`) - e.g. use template conditions rather than 'native' AWS Template Conditions - they are unwieldy and can make changes hard to reason about.
+
+As shown in examples above, vars are used in templates for interpolation, conditions etc. For example:
+
+```yaml
+# config file
+vars:
+  queue_name: "MyQueue"
+```
+
+```yaml
+# template
+Resources:
+  MyQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "{{ queue_name }}"
+```
+
+Like `params`, `vars` can have environment-specific overrides. Following the previous example, the following config file would allow deploying queues of different names to `dev` and `test`:
+
+```yaml
+# config file
+environments:
+  dev:
+    vars:
+      queue_name: "MyDevQueue"
+  test:
+    vars:
+      queue_name: "MyTestQueue"
+```
+
+Configuration _values_ are processed though Jinja2 (although the file itself is *not* a Jinja template). Many
 patterns are stolen from Ansible, so some concepts may be familiar if you've used Ansible.
 
 For example:
@@ -263,7 +369,172 @@ aws:
 
 Declares a different bucket per tier.
 
-### Configuration Hierarchy
+Similarly:
+
+```yaml
+vars:
+   hello: "hello, {{ who | default('world') }}!"
+
+environments:
+  dev:
+  test:
+    vars:
+      who: me
+```
+
+In this example, deploying to dev, `hello` will have the value `hello, world!`, but the value in test will be `hello, me!`.
+
+### `refs` - Referencing other stack outputs
+
+Use `refs:` to retrieve Outputs from other stacks and feeding them as inputs into your stack.
+
+Refs is a map/dict of names and options. Refs are available to templates and configuration.
+
+For example, if you have a VPC stack deployed from which you need to retrieve subnet IDs, which are exposed as `Subnets` output, you can do something like:
+
+```yaml
+refs:
+  vpc:
+
+vars:
+  subnets: "{{ refs.vpc.Subnets }}"
+```
+
+will query the `Subnets` output from the vpc stack and pass in a list of subnets to the template as a var.
+
+#### Optional references
+
+Some stacks may be optional. A referenced output will return nil/blank value
+if the stack doesn't exist.
+
+For example:
+
+```yaml
+refs:
+  an_optional_stack:
+    optional: true
+
+vars:
+  some_optional_var: "{{ refs.an_optional_stack.SomeOutput }}"
+```
+
+in this case, `some_optional_var` will be set iff the referenced stack exists, otherwise it is set to `nil`.
+
+#### Overriding stack names
+
+Normally, external stack will found using standard `stk` naming convention (`$environment-$stack_name`).
+
+You can override this when needing to reference a stack that does not
+follow this convernsion using the `stack_name` attribute.
+
+Like all `refs:` settings, you can set this on a per-environment basis if required:
+
+```yaml
+environments:
+  prod:
+    vars:
+      foo: "{{ refs.some_stack.OtherOutput }}"
+    refs:
+      some_stack:
+        stack_name: "some-weirdly-named-stack"
+```
+
+### `tags`
+
+Tags that are applied to the stack (and thus resources within the stack)
+
+### `aws`
+
+Information about the AWS account being deployed into. At a minimum needs region and name of the s3 bucket for uploading deployment artifacts.
+
+
+### `environments`
+
+If deploying into multiple environments, any environment-specific configuration goes here.
+You need to declare at least one environment in a top-level configuration file.
+
+Each sub-key of `environments` is the environment name.
+
+Within a configuration file, environment-specific values take precedence over top-level configuration.
+
+For example:
+
+```
+vars:
+  a: 'foo'
+
+environments:
+  dev:
+    vars:
+      a: 'bar'
+  test:
+  prod:
+```
+
+In this case, a dev deployment `a` has value `bar`, and test/prod deployments `a` will value the value `foo`.
+
+The following sections can have environment-specific overrides:
+
+* `vars`
+* `params`
+* `aws`
+* `refs`
+* `tags`
+
+For example:
+
+```
+...
+environments:
+  dev:
+    tags:
+      Owner: "mary.jane@acme.com"
+  test:
+    tags:
+      Owner: "bob.smith@acme.com"
+tags:
+  Environment: "{{ environment }}"
+```
+
+#### Valid deployment environments
+
+Within an top-level config file, `environments` defines the allowable deployment
+targets. Environments defined in include files are not used for this purpose.
+
+In the following example, `a` can only be deployed as `dev` and `prod`, whereas `b` supports
+`dev`, `test` and `prod` as deployment environments:
+
+    # a.yml
+    includes:
+      - common
+    environments:
+      dev:
+      prod:
+
+    # b.yml
+    includes:
+      - common
+    environments:
+      dev:
+      test:
+      prod:
+
+    # includes/common.yml
+    environments:
+      dev:
+      test:
+      prod:
+
+
+### `helpers`
+
+Custom helper functions may be used by templates. Since we're injecting code into our runtime, the configuration file must explicitly declare any helpers here.
+
+### `core`
+
+Configuration that changes behavior of the 'stk' application rather configuration/template deployment.
+
+## Configuration Hierarchy
 
 Obviously, providing deploying the same template into dev, test, and production is not overly useful. We need to be
 able to deploy environment-specific configuration to each stack.
@@ -308,256 +579,14 @@ environments:
 
 ## Configuration Detail
 
-### `includes:`
 
-Include other configuration files.
-
-Allows composition and sharing of common configuration to reduce unnecessary duplication.
-
-It is a list of YAML files loaded from `includes/` directory.
-
-They are listed in highest-to-lowest precedence.
-
-```
-# sample.yml
-includes:
-  - a
-  - b
-
-# includes/a.yml
-vars:
-  foo: 'a'
-
-# includes/b.yml
-vars:
-  foo: 'b'
-```
-
-in this example, the `foo` var will be given the value `a`.
-
-Two common use cases for include files are:
-
-1. Environment specific configuration - e.g. AWS account details
-1. Where multiple archetype files use the sample template.
-
-### `template:`
-
-Defines where to find the CloudFormation template. Supports local files, local git repositories
-or remote git repositories.
-
-#### Plain filesystem (not git)
-
-If `version` is not set, then the templates are assumed to come from local filesystem - useful
-when developing templates. In this case, set `root` to path.
-
-E.g.
-
-    environments:
-      dev:
-        template:
-          version:
-          root: ../stk-templates
-
-You can use an environment variable to allow over-riding of template location with something like:
-
-    environments:
-      dev:
-        template:
-          version:
-          root: {{ environ['TEMPLATE_PATH'] | default)'../stk-templates') }}
-
-#### Git
-
-Similar to above, but uses current commit `HEAD` in local filesystem:
-
-    environments:
-      dev:
-        template:
-          version: HEAD
-          repo: {{ environ['TEMPLATE_PATH'] | default('../stk-templates') }}
-
-Remote repositories are also supported. For example, the following will use current main
-of github repository:
-
-    template:
-      version: main
-      repo: git@github.com:jwoffindin/stk-templates.git
-
-
-### `params:`
-
-AWS Parameters that are passed into a stack. Minimize if possible, use `vars` instead.
-Good use cases include:
-
-* passing secrets
-* (that's about it?)
-
-Parameters can be automatically JSON-encoded (for non-string values), by setting
-`core.encode_params` to `true`. This will simplify passing JSON-style data as parameters.
-
-For example:
-
-```
-core:
-  encode_params: true
-
-params:
-  someComplexValue: { "key": "value" }
-```
-
-### `vars:`
-
-Jinja2 variables/values passed to the template.
-
-Preferred way to manage configuration - e.g. use template conditions rather than 'native' AWS Template Conditions - they are unwieldy and can make changes hard to reason about.
-
-
-### `refs:` - Referencing other stack outputs
-
-Use the `refs:` section to retrieve outputs from other stacks.
-
-For example, if you have another stack deployed which you need to
-retieve values from (e.g. subnet IDs from a VPC stack), you can
-do something like:
-
-```yaml
-refs:
-  vpc:
-
-vars:
-  subnets: "{{ refs.vpc.Subnets }}"
-```
-
-will pass in a list of subnets to the template.
-
-#### Optional references
-
-Some stacks may be optional. A referenced output will return nil/blank value
-if the stack doesn't exist.
-
-For example:
-
-```yaml
-refs:
-  an_optional_stack:
-    optional: True
-
-vars:
-  some_optional_var: "{{ refs.an_optional_stack.SomeOutput }}"
-```
-
-in this case, `some_optional_var` will be set iff the referenced stack exists, otherwise it is set to `nil`.
-
-#### Overriding stack names
-
-Normally, external stack will found using standard `stk` naming convention (`$environment-$stack_name`).
-
-You can override this when needing to reference a stack that does not
-follow this convernsion using the `stack_name` attribute.
-
-Like all `refs:` settings, you can set this on a per-environment basis if required:
-
-```yaml
-environments:
-  prod:
-    vars:
-      foo: "{{ refs.some_stack.OtherOutput }}"
-    refs:
-      some_stack:
-        stack_name: "some-weirdly-named-stack"
-```
-
-### `tags:`
-Tags that are applied to the stack (and thus resources within the stack)
-
-### `aws:`
-
-Information about the AWS account being deployed into. At a minimum needs region and
-s3 bucket for uploading deployment artifacts.
-
-### `environments:`
-
-If deploying into multiple environments, any environment-specific configuration goes here.
-You need to declare at least one environment in a top-level configuration file.
-
-Each sub-key of `environments` is the environment name.
-
-Within a configuration file, environment-specific values take precedence over top-level configuration.
-
-For example:
-
-```
-vars:
-  a: 'foo'
-
-environments:
-  dev:
-    vars:
-      a: 'bar'
-  test:
-  prod:
-```
-
-In this case, a dev deployment `a` has value `bar`, and test/prod deployments `a` will value the value `foo`.
-
-The following sections can have environment-specific overrides:
-
-* `vars`
-* `params`
-* `aws`
-* `refs`
-* `tags`
-
-#### Valid deployment environments
-
-Within an archetype (top-level config) file, `environments` defines the allowable deployment
-environments. Environments defined in include files are not used for this purpose.
-
-In the following example, `a` can only be deployed as `dev` and `prod`, whereas `b` supports
-`dev`, `test` and `prod` as deployment environments:
-
-    # a.yml
-    includes:
-      - common
-    environments:
-      dev:
-      prod:
-
-    # b.yml
-    includes:
-      - common
-    environments:
-      dev:
-      test:
-      prod:
-
-    # includes/common.yml
-    environments:
-      dev:
-      test:
-      prod:
-
-
-### `helpers:`
-
-Custom helper functions may be used by templates. Since we're injecting code into our runtime, the
-configuration file must explicitly declare any helpers here.
-
-
-### `core`:
-
-Configuration that changes behavior of the 'stk' application rather configuration/template
-deployment.
-
-## Usage
-
-TODO
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Environment Variables
 
 | Name | Purpose |
+| ---- | ------- |
 | `CONFIG_PATH` | Default path to configuration files, override with `--config-path` |
 | `TEMPLATE_PATH` | Default path to templates, usually overridden by config (`template.*`) or `--template-path` cli argument |
 | `TEMPLATE_CACHE` | Override the path to template cache (local copy of template project for git projects only)  |
@@ -582,24 +611,6 @@ The following environment variables can be used to change this behaviour
 | -2  | Could not generate change set |
 | -9  | No change to apply |
 
-### Terminology
-
-* **Environment**. What “level” are deploying a stack. E.g. development, test, stage, production, etc.
-* **Template**. A YAML CloudFormation template (with Jinja2 templates, so yes — we're templating templates).
-* **Archetype**. A common architectural building block that we deploy into each tier. I.e. same business function, but in dev, test, stage etc.
-* **Configuration File**. A YAML file that defines what CloudFormation stacks are to be deployed. There are two flavours
-  of configuration file:
-  * Top-level configuration files. These define what *environments* a given stack can be deployed - i.e. 1:1 mapping of top-level config files to *archetype*.
-  * Include files. These are YAML files, mostly same structure as top-level configuration, but exist only to reduce copy
-    & paste between top-level configuration files. These are stored in an `includes/` directory.
-* **Stack**. A CloudFormation stack. For our purpose, it is an instance of an Archetype - i.e. template + configuration file + tier.
-
-Durning development, we typically work with two git repositories:
-
-* Configuration files (`$CONFIG_PATH`)
-* Templates (`$TEMPLATES_PATH`)
-
-Often the template and configuration filenames are the same — so I typically use `.yml` extension for config files, and `.yaml` for templates. YMMV.
 
 ## Roadmap
 
