@@ -77,6 +77,7 @@ class TemplateHelpers:
 
         Template projects can define custom helpers for domain-specific logic.
         """
+        log.debug("injecting helpers into jinja environment")
         funcs = env.globals
 
         # Core helpers
@@ -149,14 +150,18 @@ class TemplateHelpers:
         Given a named user_data/<name> directory, generates UserData content
         """
         dir = path.join("user_data", name.lower())
+        log.debug("adding user_data from %s", dir)
+
         if not self.provider.is_tree(dir):
             raise (Exception(f"{dir} is not a directory"))
 
         # Jinja2 evaluation requires any referenced variables be defined
         # to avoid hard-to-detect failures.
+        log.debug("setting up jinja environment")
         env = jinja2.Environment(line_statement_prefix="##", undefined=jinja2.StrictUndefined)
+        self.inject_helpers(env)
 
-        # context for template evalation is 'config.vars' plus any additional
+        # context for template evaluation is 'config.vars' plus any additional
         # parameters passed. E.g.
         #
         #     user_data(name='foo', param1='bar', param2='buzz')
@@ -165,14 +170,17 @@ class TemplateHelpers:
 
         # Build dict of { name => content } that we can encode
         parts = {}
-        for part_name, type, content in self.provider.find(dir):
-            if type != "file":
+        for part_name, content_type, content in self.provider.find(dir):
+            log.debug("processing part %s type=%s", part_name, content_type)
+            if content_type != "file":
                 raise Exception("user_data(): %s is not a regular file" % part_name)
 
             # Userdata files are actually Jinja2 templates in disguise
             template = env.from_string(source=str(content, "utf-8"))
+            log.debug("rendering template for part %s", part_name)
             parts[part_name] = template.render(template_context)
 
+        log.debug("performing multipart encode")
         encoded = multipart_encode(sorted(parts.items()))
 
         # Map encoded multi-line string to a JSON array.
@@ -183,17 +191,20 @@ class TemplateHelpers:
         # for example: "hello <<{"Ref": "bar"}>> there <<{}>>" will be mapped
         # to a json array ["hello ", {"Ref": "bar"}, " there ", {}]
         #
+        log.debug("processing break-outs")
         lines = []
         for line in encoded.splitlines(keepends=True):
             parts = re.split("<<(.+?)>>(?!>)", line)
             for i, match in enumerate(parts):
                 if i % 2:
+                    log.debug("processing json block %s", match)
                     lines.append(json.loads(match))
                 else:
                     lines.append(match)
 
         # Rendering user data as correctly indented content is hard, so
         # don't even bother - just dump out single-line JSON !
+        log.debug("user_data complete")
         return json.dumps({"Fn::Base64": {"Fn::Join": ["", lines]}})
 
     def tags(self, extra_attributes={}, **tags):
