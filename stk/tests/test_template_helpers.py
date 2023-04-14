@@ -21,6 +21,7 @@ class TestTemplateHelpers(StackFixtures):
         class FakeEnvironment:
             def __init__(self):
                 self.globals = dict()
+                self.filters = dict()
 
         return FakeEnvironment()
 
@@ -56,7 +57,7 @@ class TestTemplateHelpers(StackFixtures):
         assert type(rendered) == RenderedTemplate
 
         assert rendered["foo_should_be_42"] == "42"
-        assert rendered["resourcify"] == "Foo_barBaz"
+        assert rendered["resourcify"] == "FooBarBaz"
 
     def test_lambda_uri(self, cfn_bucket, provider, config):
         bucket = CfnBucket(config.aws)

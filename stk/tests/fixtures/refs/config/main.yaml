@@ -6,8 +6,9 @@ refs:
     optional: true
 environments:
   dev:
-    var1: "{{ refs.output('required_stack', 'some_output') }}"
-    var2: "{{ refs.output('optional_stack', 'another_output') }}"
+    vars:
+      var1: "{{ refs.output('required_stack', 'some_output') }}"
+      var2: "{{ refs.output('optional_stack', 'another_output') }}"
 aws:
   region: us-east-1
   cfn_bucket: foo

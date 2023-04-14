@@ -73,7 +73,7 @@ class TestEnvironmentalPrecdenceConfig(ConfigFixtures):
         assert source.version == "main"
 
     def test_shortcut_usage(self, config):
-        config = Config("shortcut", environment="test", config_path=self.fixture_path("config", "templates"), overrides={})
+        config = Config("shortcut", environment="test", config_path=self.fixture_path("config", "templates"))
 
         source = config.template_source
 

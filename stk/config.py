@@ -159,7 +159,7 @@ class Config:
         name: str,
         environment: str,
         config_path: str,
-        overrides: ConfigFiles,
+        overrides: ConfigFiles = ConfigFiles([]),
         template_path: Union[str, None] = None,
     ):
         # While we should just receive `name`, we may be be passed

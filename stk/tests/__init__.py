@@ -1,9 +1,12 @@
-import boto3
+# pylint: disable=missing-docstring
 
 from os import path, environ
+
+import boto3
 from pytest import fixture
 from pytest import fixture
 from moto import mock_s3, mock_cloudformation, mock_sts
+
 
 from ..aws_config import AwsSettings
 from ..config import Config, ConfigFile
@@ -60,7 +63,7 @@ class StackFixtures(Fixtures):
 class ConfigFixtures(StackFixtures):
     @fixture
     def config(self, request, sts):
-        return Config("main", environment="test", config_path=self.fixture_path("config", request.param), overrides={})
+        return Config("main", environment="test", config_path=self.fixture_path("config", request.param))
 
     @fixture
     def config_file(self, request, sts):
