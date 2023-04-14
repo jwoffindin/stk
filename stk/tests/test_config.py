@@ -1,6 +1,7 @@
 import os
 import pytest
 
+# pylint: disable=missing-docstring
 
 from . import ConfigFixtures, StackFixtures
 from ..config import Config
@@ -12,7 +13,7 @@ class TestEmptyConfig(ConfigFixtures):
         assert "environment" in config.vars
         assert "name" in config.vars
 
-        assert list(config.params.keys()) == []
+        assert not list(config.params.keys())
 
 
 @pytest.mark.parametrize("config", ["simple"], indirect=True)
@@ -72,7 +73,7 @@ class TestEnvironmentalPrecdenceConfig(ConfigFixtures):
         assert source.version == "main"
 
     def test_shortcut_usage(self, config):
-        config = Config("shortcut", environment="test", config_path=self.fixture_path("config", "templates"))
+        config = Config("shortcut", environment="test", config_path=self.fixture_path("config", "templates"), overrides={})
 
         source = config.template_source
 

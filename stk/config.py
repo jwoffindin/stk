@@ -63,7 +63,10 @@ class Config:
 
         def __init__(self, vars: dict):
             """
-            We want to expand interpolated 'vars' using Jinja2.
+            This method initializes an object with a dictionary of variables 'vars'. It expands the interpolated variables in the
+            dictionary using Jinja2, and checks for any failed keys. If there are any failed keys, it creates a table of errors with
+            the key name, corresponding value, and error message, and logs it to the console. It then raises an exception with a
+            message indicating that an error occurred processing the 'vars' dictionary.
 
             This is a bit different than how to expand other Jinja-value dicts because we'll need to iterate through a few
             times until all vars have been expanded.
@@ -128,10 +131,13 @@ class Config:
             # STK version
             self.deployed_with = f"stk-{VERSION}"
 
+            root = template_source.root or ""
+            name = template_source.name or ""
+
             if template_source.repo:
-                self.template = "/".join([template_source.repo, template_source.root, template_source.name])
+                self.template = "/".join([template_source.repo, root, name])
             else:
-                self.template = "/".join([template_source.root, template_source.name])
+                self.template = "/".join([root, name])
 
             # Config git HEAD state - this is optional. The config project may
             # not be stored in git. Also, if config is in a subdirectory, we'd

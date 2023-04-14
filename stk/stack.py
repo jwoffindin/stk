@@ -6,6 +6,7 @@ from string import ascii_letters
 from botocore.exceptions import ClientError, WaiterError
 from difflib import unified_diff
 
+from . import log
 from .stack_waiter import StackWaiter
 from .template import RenderedTemplate
 from .basic_stack import BasicStack
@@ -26,9 +27,12 @@ class Stack(BasicStack):
         super().__init__(**kwargs)
 
     def validate(self, template: RenderedTemplate):
+        """Validate template"""
+        log.warning("Validating template")
         try:
             self.cfn.validate_template(TemplateURL=self.bucket.upload(template).as_http())
         except ClientError as ex:
+            log.warning(ex.response)
             if ex.response["Error"]["Code"] == "ValidationError":
                 return ex
             raise

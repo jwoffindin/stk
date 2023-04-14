@@ -60,7 +60,7 @@ class StackFixtures(Fixtures):
 class ConfigFixtures(StackFixtures):
     @fixture
     def config(self, request, sts):
-        return Config("main", environment="test", config_path=self.fixture_path("config", request.param))
+        return Config("main", environment="test", config_path=self.fixture_path("config", request.param), overrides={})
 
     @fixture
     def config_file(self, request, sts):

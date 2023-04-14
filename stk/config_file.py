@@ -162,7 +162,7 @@ class ConfigFile(ConfigObject):
         return include_paths
 
 
-    def load_includes(self, overrides: Union[ConfigFiles, None]) -> ConfigFiles:
+    def load_includes(self, overrides: Union[ConfigFiles, None] = None) -> ConfigFiles:
         """
         Returns list of config objects with highest precedence last (lowest first)
         """

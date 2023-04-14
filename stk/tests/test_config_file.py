@@ -1,6 +1,6 @@
-import os
 import pytest
 
+# pylint: disable=missing-docstring
 
 from . import ConfigFixtures
 
