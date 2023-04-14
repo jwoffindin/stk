@@ -13,3 +13,7 @@ docker # seems to be required for moto
 pytest-picked
 pytest-testmon
 pytest-watch
+
+#
+openapi_spec_validator
+cfn-lint
