@@ -40,11 +40,11 @@ STK is written in Python. Install it from GitHub using Python pip, or use the do
 
 Install STK via pip
 
-    pip install git+https://github.com/jwoffindin/stk.git
+    pip install cfn-stk
 
 Alternatively
 
-    python3 -m pip install git+https://github.com/jwoffindin/stk.git
+    python3 -m pip install cfn-stk
 
 Docker images are available from <https://hub.docker.com/repository/docker/johnwo/stk>.
 
@@ -53,7 +53,7 @@ Docker images are available from <https://hub.docker.com/repository/docker/johnw
 
 ## Getting started
 
-> **Note**: Quick start: The `cfn init` command will help you get going be creating a "configuration project".
+> **Note**: Quick start: The `cfn init` command will help you get started by creating a skeleton "configuration project":
 
 ```bash
 cfn config init my-project --repo git@github.com:jwoffindin/stk-templates.git
