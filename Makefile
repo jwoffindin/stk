@@ -1,5 +1,5 @@
 VERSION := $(shell PYTHONPATH=. python -c 'import stk;print(stk.VERSION)')
-IS_FINAL := $(shell echo $VERSION | egrep -x '([0-9]{1,}\.){2}[0-9]{1,}')
+IS_FINAL := $(shell PYTHONPATH=. python -c 'import stk;print(stk.VERSION)' | egrep -x '([0-9]{1,}\.){2}[0-9]{1,}')
 default:
 	@echo "$(VERSION) try 'make setup test'"
 
